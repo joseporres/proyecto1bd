@@ -202,12 +202,19 @@ class Sequential
         {
             vector<Registro> registros;
             // consigo la cabecera
-            Registro reg = readRecord(nombre, 0, print);
+            Registro reg = readRecord(nombre, 1, print);
             registros.push_back(reg);
 
             while (reg.next != -1)
             {
-                reg = readRecord(reg.toNext == 'm' ? nombre : nombreAux, reg.next, print);
+                if (reg.toNext == 'm')
+                {
+                    reg = readRecord(nombre, reg.next+1, print);
+                }
+                else
+                {
+                    reg = readRecord(nombre, reg.next, print);
+                }
                 registros.push_back(reg);
             }
 
@@ -375,6 +382,14 @@ class Sequential
             }
             else
             {
+                if (registros.size() == 0)
+                {
+                    fstream fileToWrite;
+                    fileToWrite.open(nombreAux, ios::in | ios::out | ios::binary);
+                    fileToWrite.write((char*) &registro, sizeof(Registro));
+                    fileToWrite.close();
+                    return;
+                }
                 for (int i = 0; i < registros.size(); ++i)
                 {
                     Registro prev = registros[i];
@@ -473,7 +488,9 @@ int main()
     // Lee bien la cabecera creada en el constructor
     // seq.readRecord("seqFile.txt", -1);
 
+    // seq.add(reg0);
     seq.insertAll(registros);
+    seq.loadAll();
     // seq.search("A");
     // seq.search("A", "C");
     // seq.search("A", "B");
