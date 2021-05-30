@@ -12,9 +12,13 @@ struct Registro
     char codigo [5];
     char nombre [20];
     char carrera [15];
-    int ciclo = 1;
+    int ciclo = 0;
     int next = -1;
-    char to = 'm';
+    char toNext = 'm';
+    int prev = -1;
+    char toPrev = 'm';
+    int nextDel = -1; 
+    char toDel = 'm';
 };
 
 
@@ -25,7 +29,9 @@ void printRegistro(Registro reg)
     cout << reg.carrera << endl;
     cout << reg.ciclo << endl;
     cout << reg.next << endl;
-    cout << reg.to << endl;
+    cout << reg.toNext << endl;
+    cout << reg.prev << endl;
+    cout << reg.toPrev << endl;
     cout << endl;
 }
 
@@ -63,8 +69,7 @@ class Sequential
     private:
         string nombre;
         string nombreAux = "auxAdd.txt";
-        Registro regAux;
-        int startLines;
+        // Registro regAux;
         // const int lengthCod = sizeof(regAux.codigo)/sizeof(regAux.codigo[0]);
         // const int lengthNom = sizeof(regAux.nombre)/sizeof(regAux.nombre[0]);
         // const int lengthCar = sizeof(regAux.carrera)/sizeof(regAux.carrera[0]);
@@ -75,17 +80,77 @@ class Sequential
             return (strcmp(a.nombre, b.nombre) <= 0);
         }
 
-        Registro readRecord(string nombre_, int pos, bool print = true)
+        // solo actualiza el prev y el next
+        void actualizeRegisters(Registro prev, Registro registro, Registro next)
         {
-            fstream file;
-            file.open(nombre_, ios::in | ios::out | ios::binary);
-            Registro registro;
-            file.seekg(pos * sizeof(Registro), ios::beg);      
-            file.read((char*) &registro, sizeof(Registro));
-            if (print) printRegistro(registro);
-            file.close();
-            return registro;
-        };
+            // actualizamos el prev
+            fstream filePrev;
+            filePrev.open(registro.toPrev == 'm' ? nombre : nombreAux, ios::in | ios::out | ios::binary);
+            filePrev.seekg(registro.prev * sizeof(Registro), ios::beg);
+            filePrev.write((char*) &prev, sizeof(Registro));
+            filePrev.close();
+            // actualizamos el next
+            fstream fileNext;
+            fileNext.open(registro.toNext == 'm' ? nombre : nombreAux, ios::in | ios::out | ios::binary);
+            fileNext.seekg(registro.next * sizeof(Registro), ios::beg);
+            fileNext.write((char*) &next, sizeof(Registro));
+            fileNext.close();
+        }
+
+        void modifyOnDeleteRegisters(vector<Registro> registros, int pos, Registro header)
+        {
+            // declaración de registros
+            Registro prev = registros[pos-1];
+            Registro reg = registros[pos];
+            Registro next = registros[pos+1];
+            pair<int, char> temp = make_pair(next.prev, next.toPrev);
+            // Modificacion del registro a borrar
+            reg.nextDel = header.nextDel;
+            reg.toDel = header.toDel;
+            // Modificacion de la cabecera
+            header.nextDel = pos;
+            header.toDel = next.toPrev;
+            fstream fileHeader;
+            fileHeader.open(nombre, ios::in | ios::out | ios::binary);
+            fileHeader.seekg(0, ios::beg);
+            fileHeader.write((char*) &header, sizeof(Registro));
+            fileHeader.close();
+            // Modificacion del prev
+            prev.next = reg.next;
+            prev.toNext = reg.toNext;
+            // Modificacion del next
+            next.prev = reg.prev;
+            next.toPrev = reg.toPrev;
+            // Actualizar en los archivos
+            fstream fileCurrent;
+            fileCurrent.open(temp.second == 'm' ? nombre : nombreAux, ios::in | ios::out | ios::binary);
+            fileCurrent.seekg(temp.first * sizeof(Registro), ios::beg);
+            fileCurrent.write((char*) &reg, sizeof(Registro));
+            actualizeRegisters(prev, reg, next);
+        }
+
+        void modifyRegisters(Registro prev, Registro registro, Registro next)
+        {
+            pair<int, char> temp = make_pair(prev.next, prev.toNext);
+            fstream fileAux;
+            fileAux.open(nombreAux, ios::in | ios::out | ios::binary);
+            fileAux.seekg(0, ios::end);
+            // En el anterior
+            prev.next   = fileAux.tellg();
+            prev.toNext = 'a';
+            // En el nuevo
+            registro.prev   = next.prev;
+            registro.toPrev = next.toPrev;
+            registro.next   = temp.first;
+            registro.toNext = temp.second;
+            fileAux.write((char*) &registro, sizeof(Registro));                        
+            // En el siguiente
+            next.prev   = prev.next;
+            next.toPrev = prev.toNext;                
+            fileAux.close();
+            // Actualizamos los registros modificados
+            actualizeRegisters(prev, registro, next);
+        }
 
     public:
         Sequential(string nombre)
@@ -93,11 +158,28 @@ class Sequential
             this->nombre = nombre;
             fstream file;
             file.open(nombre, ios::in | ios::out | ios::binary);
-            file.seekg(0, file.end);
-            startLines = file.tellg()/sizeof(Registro);
+            file.seekg(0, ios::end);
+            Registro reg;
+            strcpy(reg.codigo, "1111");
+            strcpy(reg.nombre, "cabeceraaaaaaaaaaaa");
+            strcpy(reg.carrera, "cienciadelacomp");
+            if (file.tellg() == 0)
+                file.write((char*) &reg, sizeof(reg));
             file.close();
         }
         ~Sequential(){};
+
+        Registro readRecord(string nombre_, int pos, bool print = true)
+        {
+            fstream file;
+            file.open(nombre_, ios::in | ios::out | ios::binary);
+            Registro registro;
+            file.seekg((pos) * sizeof(Registro), ios::beg);      
+            file.read((char*) &registro, sizeof(Registro));
+            if (print) printRegistro(registro);
+            file.close();
+            return registro;
+        };
 
         vector<Registro> load(string nombre_, bool print = true)
         {
@@ -106,12 +188,29 @@ class Sequential
             file.open(nombre_, ios::in | ios::out | ios::binary);
             file.seekg(0, ios::end);
             int lines = file.tellg()/sizeof(Registro);
-            for (int i = 0; i < lines; ++i)
+            file.close();
+            if (nombre_ == nombreAux) registros.emplace_back(readRecord(nombre_, 0, print));
+            for (int i = 1; i < lines; ++i)
             {
                 Registro reg = readRecord(nombre_, i, print);
-                if (reg.next != -2) registros.emplace_back(reg);
+                registros.emplace_back(reg);
             }
-            file.close();
+            return registros;
+        }
+
+        vector<Registro> loadAll(bool print = true)
+        {
+            vector<Registro> registros;
+            // consigo la cabecera
+            Registro reg = readRecord(nombre, 0, print);
+            registros.push_back(reg);
+
+            while (reg.next != -1)
+            {
+                reg = readRecord(reg.toNext == 'm' ? nombre : nombreAux, reg.next, print);
+                registros.push_back(reg);
+            }
+
             return registros;
         }
 
@@ -120,14 +219,21 @@ class Sequential
             fstream file;
             file.open(nombre, ios::in | ios::out | ios::binary);
             sort(registros.begin(), registros.end(), compare);
+            file.seekg(1 * sizeof(Registro), ios::beg);
             for (int i = 0; i < registros.size(); ++i)
             {
-                if (i != registros.size()-1) 
+                if (i < registros.size()-1) 
                 {
                     registros[i].next = i+1;
                 }
+                if (i > 0)
+                {
+                    registros[i].prev = i-1;
+                }
                 file.write((char*) &registros[i], sizeof(Registro));
             }
+            file.seekg(0, ios::beg);
+            file.write((char*) &registros[0], sizeof(Registro));
             file.close();
         };
 
@@ -142,15 +248,18 @@ class Sequential
             int pos = binarySearch(registros, key);
             if (pos != -1)
             {
+                // el actual
+                printRegistro(registros[pos]);
+                registrosEncontrados.push_back(registros[pos]);
                 // ir hacia adelante
-                for (int i = pos; i < registros.size(); ++i)
+                for (int i = pos+1; i < registros.size(); ++i)
                 {
                     if (strcmp(registros[i].nombre, charKey) != 0) break;
                     printRegistro(registros[i]);
                     registrosEncontrados.push_back(registros[i]);
                 }
                 // ir hacia atrás
-                for (int i = pos; i > 0; --i)
+                for (int i = pos-1; i >= 0; --i)
                 {
                     if (strcmp(registros[i].nombre, charKey) != 0) break;
                     printRegistro(registros[i]);
@@ -184,15 +293,18 @@ class Sequential
             int pos = binarySearch(registros, begin);
             if (pos != -1)
             {
+                // el actual
+                printRegistro(registros[pos]);
+                registrosEncontrados.push_back(registros[pos]);
                 // ir hacia adelante
-                for (int i = pos; i < registros.size(); ++i)
+                for (int i = pos+1; i < registros.size(); ++i)
                 {
                     if (strcmp(registros[i].nombre, charEnd) > 0) break;
                     printRegistro(registros[i]);
                     registrosEncontrados.push_back(registros[i]);
                 }
                 // ir hacia atrás
-                for (int i = pos; i > 0; --i)
+                for (int i = pos-1; i >= 0; --i)
                 {
                     if (strcmp(registros[i].nombre, charBeg) != 0) break;
                     printRegistro(registros[i]);
@@ -216,127 +328,105 @@ class Sequential
 
         void add(Registro registro)
         {
-            // vector<Registro> registrosMain = load(nombre, false);
-            // vector<Registro> registrosAux = load(nombreAux, false);
-            // fstream fileAux;
-            // fileAux.open(nombreAux, ios::in | ios::app);
-            // fileAux.seekg(0, ios::end);
-            // fstream fileMain;
-            // fileMain.open(nombre, ios::in | ios::app);
-            // int pos = binarySearch(registrosMain, registro.nombre); 
+            // CASO 1: INSERTAR EN UN REGISTRO ELIMINADO USANDO LIFO
+            fstream file;
+            Registro reg;
+            file.open(nombre, ios::in | ios::out | ios::binary);
+            file.seekg(0, ios::beg);
+            file.read((char*) &reg, sizeof(Registro));
+            do
+            {
+                Registro prev = readRecord(reg.toPrev == 'm' ? nombre : nombreAux, reg.prev, false);
+                Registro next = readRecord(reg.toNext == 'm' ? nombre : nombreAux, reg.next, false);
+                if (strcmp(registro.nombre, prev.nombre) >= 0 
+                    && strcmp(registro.nombre, next.nombre) <= 0)
+                {
+                    // escribo
+                    fstream fileToWrite;
+                    fileToWrite.open(reg.toDel == 'm' ? nombre : nombreAux, ios::in | ios::out | ios::binary);
+                    fileToWrite.seekg(reg.nextDel * sizeof(Registro), ios::beg);
+                    fileToWrite.write((char*) &registro, sizeof(Registro));
+                    fileToWrite.close();
+                    file.close();
+                    return;
+                }
+                reg = readRecord(reg.toDel == 'm' ? nombre : nombreAux, reg.nextDel, false);
+            } while (reg.nextDel != -1); 
+            file.close();
 
-            // if (strcmp(registrosMain[pos].nombre, registro.nombre) <= 0)
-            // {
-            //     if (registrosAux.size() == 0)
-            //     {  
-            //         int i;
-            //         for (i = pos; i < registrosMain.size(); ++i) 
-            //         {
-            //             if (strcmp(registrosMain[i].nombre, registro.nombre) != 0) break;
-            //         }
-            //         --i;
-            //         auto temp = make_pair(registrosMain[i].next, registrosMain[i].to);
-            //         registrosMain[i].next = 0;
-            //         registrosMain[i].to = 'a';
-            //         registro.next = temp.first;
-            //         registro.to = temp.second;
-            //         // Añadir al aux
-            //         fileAux.write((char*) &registro, sizeof(registro));
-            //         fileAux.write("\n", sizeof("\n"));
-            //         // Sobreescribir el del main
-            //         fileMain.seekg(i * endline, ios::beg);
-            //         fileMain.write((char*) &registrosMain[i], sizeof(registrosMain[i]));
-            //     }
-            //     else
-            //     {
-            //         int modifyPos = pos;
-            //         for (modifyPos = pos; modifyPos < registrosMain.size(); ++modifyPos) 
-            //         {
-            //             if (strcmp(registrosMain[modifyPos].nombre, registro.nombre) != 0) break;
-            //         }
-            //         Registro prev = registrosMain[pos];
-            //         string x = (registrosMain[pos].to == 'a' ? nombreAux : nombre);
-            //         Registro current = readRecord(x, registrosMain[pos].next);
-            //         while (true)
-            //         {
-            //             x = (current.to == 'a' ? nombreAux : nombre);
-            //             prev = current;
-            //             Registro current = readRecord(x, current.next);   
+            // CASO 2: INSERTAR UN REGISTRO EN EL AUX
+            // load a todos los registros de ambos archivos ordenados por sus "punteros".
+            vector<Registro> registros = loadAll(false);
+            string s(registro.nombre);
+            int pos = binarySearch(registros, s);
+            // si lo encuentra
+            if (pos != -1)
+            {
+                for (int i = pos+1; i < registros.size(); ++i)
+                {
+                    if (strcmp(registros[i].nombre, registro.nombre) != 0)
+                    {
+                        Registro prev = registros[i-1];
+                        Registro next = registros[i];
+                        modifyRegisters(prev, registro, next);
+                        return;
+                    }
+                }
+            }
+            else
+            {
+                for (int i = 0; i < registros.size(); ++i)
+                {
+                    Registro prev = registros[i];
+                    Registro next = registros[i+1];
 
-            //             if (strcmp(current.nombre, registro.nombre) > 0)
-            //             {
-            //                 auto temp = make_pair(prev.next, prev.to);
-            //                 prev.next = registrosAux.size();
-            //                 prev.to = 'a';
-            //                 registro.next = temp.first;
-            //                 registro.to = temp.second;
-            //                 // Añadir al aux
-            //                 fileAux.write((char*) &registro, sizeof(registro));
-            //                 fileAux.write("\n", sizeof("\n"));
-            //                 // Sobreescribir el del main
-            //                 fileMain.seekg((modifyPos - 1) * endline, ios::beg);
-            //                 fileMain.write((char*) &prev, sizeof(prev));
-            //                 break;
-            //             }
-                        
-            //             if (current.next == -1) 
-            //             {
-            //                 current.next = registrosAux.size();
-            //                 current.to = 'a';
-            //                 // Añadir al aux
-            //                 fileAux.write((char*) &registro, sizeof(registro));
-            //                 fileAux.write("\n", sizeof("\n"));
-            //                 // Sobreescribir el aux
-            //                 fileAux.seekg((registrosAux.size() - 1) * endline, ios::beg);
-            //                 fileAux.write((char*) &current, sizeof(current));
-            //                 break;                   
-            //             }
-            //         }
-            //     }
-            // }
-            // else
-            // {
-            //     if (registrosAux.size() == 0)
-            //     {  
-            //         registro.next = 0;
-            //         registro.to = 'm';
-            //         // Añadir al aux
-            //         fileAux.write((char*) &registro, sizeof(registro));
-            //         fileAux.write("\n", sizeof("\n"));
-            //     }
-            //     else
-            //     {
-            //         int compareNext = 0;
-            //         char compareTo = 'm';
-            //         for (int i = 0; i < registrosAux.size(); ++i)
-            //         {
-            //             if (registrosAux[i].to == 'a') compareTo = 'a';
-            //             if (registrosAux[i].next > compareNext) compareNext = registrosAux[i].next;
-            //         }
-
-            //         for (int i = 0; i < registrosAux.size(); ++i)
-            //         {
-            //             if (registrosAux[i].next = compareNext && registrosAux[i].to == compareTo)
-            //             {
-            //                 registro.next = i;
-            //                 registro.to = 'a';
-            //                 // Añadir al aux
-            //                 fileAux.write((char*) &registro, sizeof(registro));
-            //                 fileAux.write("\n", sizeof("\n"));
-            //                 break;
-            //             }
-            //         }
-            //     }
-            // }
-            // fileAux.close(); 
-            // fileMain.close(); 
-            
+                    if (strcmp(registro.nombre, prev.nombre) >= 0 
+                        && strcmp(registro.nombre, next.nombre) <= 0)
+                    {
+                        modifyRegisters(prev, registro, next);
+                        return;
+                    }
+                }
+            }
         };
 
-        // bool delete_(string key)
-        // {
-        //     // vector<Registro> registrosAux = load(nombreAux, false);            
-        // };
+        // si deleteAll es false se borra el primero que encuentre con esa key, caso contrario se borran todos.
+        bool delete_(string key, bool deleteAll = false)
+        {
+            vector<Registro> registros = loadAll(false);
+            int pos = binarySearch(registros, key);
+            if (pos == -1) return false;
+            
+            fstream fileHeader;
+            Registro header;
+            fileHeader.open(nombre, ios::in | ios::out | ios::binary);
+            fileHeader.seekg(0, ios::beg);
+            fileHeader.read((char*) &header, sizeof(Registro));  
+            fileHeader.close();
+
+            if (!deleteAll)
+            {
+                modifyOnDeleteRegisters(registros, pos, header);
+                return true;
+            }
+        
+            modifyOnDeleteRegisters(registros, pos, header);
+            char charKey[key.length()+1];
+            strcpy(charKey, key.c_str());             
+            // ir hacia adelante
+            for (int i = pos+1; i < registros.size(); ++i)
+            {
+                if (strcmp(registros[i].nombre, charKey) != 0) break;
+                modifyOnDeleteRegisters(registros, i, header);
+            }
+            // ir hacia atrás
+            for (int i = pos-1; i > 0; --i)
+            {
+                if (strcmp(registros[i].nombre, charKey) != 0) break;
+                modifyOnDeleteRegisters(registros, i, header);
+            }
+            return true;
+        };
 
 };
 
@@ -346,35 +436,32 @@ int main()
     Sequential seq("seqFile.txt");
     vector<Registro> registros;
     Registro reg0;
-    
-
-
     strcpy(reg0.codigo, "7774");
-    strcpy(reg0.nombre, "aorresbruguelautaro");
+    strcpy(reg0.nombre, "A");
     strcpy(reg0.carrera, "cienciadelacomp");
     Registro reg1;
     strcpy(reg1.codigo, "7774");
-    strcpy(reg1.nombre, "aorresbruguelautaro");
+    strcpy(reg1.nombre, "A");
     strcpy(reg1.carrera, "cienciadelacomp");    
     Registro reg2;
     strcpy(reg2.codigo, "7774");
-    strcpy(reg2.nombre, "aorresbruguelautaro");
+    strcpy(reg2.nombre, "A");
     strcpy(reg2.carrera, "cienciadelacomp");        
     Registro reg3;
     strcpy(reg3.codigo, "7774");
-    strcpy(reg3.nombre, "aorresbruguelautaro");
+    strcpy(reg3.nombre, "A");
     strcpy(reg3.carrera, "cienciadelacomp");        
     Registro reg4;
     strcpy(reg4.codigo, "9999");
-    strcpy(reg4.nombre, "borresbruguelautaro");
+    strcpy(reg4.nombre, "B");
     strcpy(reg4.carrera, "cienciadelacomp");        
     Registro reg5;
     strcpy(reg5.codigo, "9999");
-    strcpy(reg5.nombre, "borresbruguelautaro");
+    strcpy(reg5.nombre, "B");
     strcpy(reg5.carrera, "cienciadelacomp");   
     Registro reg6;
     strcpy(reg6.codigo, "9999");
-    strcpy(reg6.nombre, "corresbruguelautaro");
+    strcpy(reg6.nombre, "C");
     strcpy(reg6.carrera, "cienciadelacomp");        
     registros.push_back(reg0);
     registros.push_back(reg1);
@@ -383,98 +470,15 @@ int main()
     registros.push_back(reg4);
     registros.push_back(reg5);
     registros.push_back(reg6);
+    // Lee bien la cabecera creada en el constructor
+    // seq.readRecord("seqFile.txt", -1);
 
-    // printRegistros(registros);
-    // seq.insertAll(registros);
-    // seq.search("aorresbruguelautaro");
-    // seq.search("aorresbruguelautaro", "corresbruguelautaro");
-    // seq.search("aorresbruguelautaro", "borresbruguelautaro");
-
-    // Registro reg;
-    // strcpy(reg.codigo, "77740");
-    // strcpy(reg.nombre, "corresbruguelautaro0");
-    // strcpy(reg.carrera, "cienciadelacom");
-    // reg.ciclo = 1;
-    // printRegistro(reg);
-    // Registro reg2;
-    // strcpy(reg2.codigo, "99990");
-    // strcpy(reg2.nombre, "aorresbruguelautaro0");
-    // strcpy(reg2.carrera, "cienciadelacomp");
-    // reg2.ciclo = 5;
-    // Registro reg3;
-    // strcpy(reg3.codigo, "19990");
-    // strcpy(reg3.nombre, "borresbruguelautaro0");
-    // strcpy(reg3.carrera, "cienciadelacomp");
-    // reg3.ciclo = 3;
-    // Registro reg4;
-    // strcpy(reg4.codigo, "99990");
-    // strcpy(reg4.nombre, "aaaresbruguelautaro0");
-    // strcpy(reg4.carrera, "cienciadelacomp");
-    // reg4.ciclo = 5;
-    // Registro reg5;
-    // strcpy(reg5.codigo, "99990");
-    // strcpy(reg5.nombre, "aaresbruguelautaro0");
-    // strcpy(reg5.carrera, "cienciadelacomp");
-    // reg5.ciclo = 5;
-    // registros.push_back(reg);
-    // registros.push_back(reg2);
-    // registros.push_back(reg3);
-    // registros.push_back(reg3);
-    // registros.push_back(reg4);
-    // registros.push_back(reg5);
-
-    // // INSERTAR TODOS
-    // cout<<"Insertar todos"<<endl;
-    // seq.insertAll(registros);
-    // cout<<"---------------------------"<<endl;
-
-    // // BÚSQUEDA EXACTA (IMPRIME REPETIDOS)
-    // cout<<"Búsqueda exacta"<<endl;
-    // seq.search("borresbruguelautaro");
-    // cout<<"---------------------------"<<endl;
-    
-    // // BÚSQUEDA POR RANGOS (IMPRIME REPETIDOS)
-    // cout<<"Busqueda por rangos"<<endl;
-    // seq.search("aaresbruguelautaro", "borresbruguelautaro");
-    // cout<<"---------------------------"<<endl;
-
-    // INSERTAR UN REGISTRO
-    // Registro reg6;
-    // strcpy(reg6.codigo, "1236");
-    // strcpy(reg6.nombre, "aaaaesbruguelautaro");
-    // strcpy(reg6.carrera, "cienciadelacom");
-    // Registro reg7;
-    // strcpy(reg7.codigo, "2345");
-    // strcpy(reg7.nombre, "aaaaasbruguelautaro");
-    // strcpy(reg7.carrera, "cienciadelacom");
-
-    // seq.add(reg6);
-    // seq.add(reg7);
-    // cout<<"IMPRESION DEL add aux"<<endl;
-    // seq.load("auxAdd.txt");
-    // cout<<"---------------------------"<<endl;    
-    // cout<<"IMPRESION DEL seqFile"<<endl;
+    seq.insertAll(registros);
+    // seq.search("A");
+    // seq.search("A", "C");
+    // seq.search("A", "B");
     // seq.load("seqFile.txt");
-    
 
-
-    
-    //-----------------------------------------------------
-
-    // cout<<"Leido"<<endl<<"---------------------------"<<endl;
-    // ifstream file("seqFile.txt");
-    // Registro registro;
-    // file.read((char *) &registro, sizeof(Registro));
-    // printRegistro(registro);
-    // file.close();
-
-    // sort(registros.begin(), registros.end(), compare);
-    // quickSort(registros,0,registros.size()-1);
-    
-    // for(auto it : registros){
-    //     printRegistro(it);
-    // }
 
     return 0;
-
 };
