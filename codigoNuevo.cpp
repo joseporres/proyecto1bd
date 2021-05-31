@@ -136,7 +136,7 @@ class Sequential
             fileAux.open(nombreAux, ios::in | ios::out | ios::binary);
             fileAux.seekg(0, ios::end);
             // En el anterior
-            prev.next   = fileAux.tellg();
+            prev.next   = fileAux.tellg()/sizeof(Registro);
             prev.toNext = 'a';
             // En el nuevo
             registro.prev   = next.prev;
@@ -174,11 +174,16 @@ class Sequential
             fileAux.open(nombreAux, ios::in | ios::out | ios::binary);
             fileAux.seekg(0, ios::end);
             // En el siguiente
-            prev.next   = fileAux.tellg();
+            prev.next   = fileAux.tellg()/sizeof(Registro);
             prev.toNext = 'a';
             // En el nuevo
             registro.prev   = prevPrev.next;
             registro.toPrev = prevPrev.toNext;
+
+            // printRegistro(prevPrev);
+            // printRegistro(prev);
+            // printRegistro(registro);
+            // cout << "-----------------------------\n";
             fileAux.write((char*) &registro, sizeof(Registro));                                    
             fileAux.close();
 
@@ -453,18 +458,70 @@ class Sequential
                 Registro next = registros[pos];
                 for (int i = pos+1; i < registros.size(); ++i)
                 {
+                    next = registros[i];
                     if (strcmp(registros[i].nombre, registro.nombre) != 0)
                     {
                         Registro prev = registros[i-1];
-                        next = registros[i];
                         modifyRegisters(prev, registro, next);
                         return;
                     }
                 }
+                cout << "ADD EXISTENTE AL FINAL\n";
                 modifyRegisters(next, registro);
             }
             else
             {
+                if (strcmp(registro.nombre, registros[0].nombre) < 0)
+                {
+                    cout << "ADD NO EXISTENTE AL INICIO\n";
+                    // se cuenta la cantidad de líneas en el aux
+                    fstream fileAux;
+                    fileAux.open(nombreAux, ios::in | ios::out | ios::binary);
+                    fileAux.seekg(0, ios::end);
+                    // se modifica el anterior registro inicial
+                    registros[0].prev   = fileAux.tellg()/sizeof(Registro);
+                    registros[0].toPrev = 'a';
+                    fileAux.close();
+                    // se consigue el nextNext
+                    fstream fileNextNext;
+                    Registro nextNext;
+                    if (registros[0].toNext == 'm')
+                    {
+                        fileNextNext.open(nombre, ios::in | ios::out | ios::binary);
+                        fileNextNext.seekg((registros[0].next + 1) * sizeof(Registro), ios::beg);
+                        fileNextNext.write((char*) &registros[0], sizeof(Registro));
+                    }
+                    else
+                    {
+                        fileNextNext.open(nombreAux, ios::in | ios::out | ios::binary);   
+                        fileNextNext.seekg((registros[0].next) * sizeof(Registro), ios::beg);                     
+                        fileNextNext.write((char*) &registros[0], sizeof(Registro));
+                    }
+                    fileNextNext.read((char*) &nextNext, sizeof(Registro));
+                    fileNextNext.close();
+
+
+                    // se modifica el registro a insertar haciendo que apunte como next a lo que apunta el nextNext como prev.
+                    registro.next   = nextNext.prev;
+                    registro.toNext = nextNext.toPrev;
+                    fileAux.write((char*) &registro, sizeof(Registro));
+                    fileAux.close();
+                    // se abre un file del seqFile donde está la cabecera
+                    fstream fileHeader;
+                    Registro regHeader;
+                    fileHeader.open(nombre, ios::in | ios::out | ios::binary);
+                    fileHeader.seekg(0, ios::beg);
+                    // se lee la cabecera
+                    fileHeader.read((char*) &regHeader, sizeof(Registro));
+                    // se reescribe la cabecera en base al prev del anterior registro inicial
+                    // porque este será el nuevo inicio de nuestros registros cuando iteremos en el loadAll.
+                    regHeader.next   = registros[0].prev;
+                    regHeader.toNext = registros[0].toPrev;
+                    fileHeader.seekg(0, ios::beg);
+                    fileHeader.write((char*) &regHeader, sizeof(Registro));
+                    return;
+                }
+
                 for (int i = 0; i < registros.size(); ++i)
                 {
                     Registro prev = registros[i];
@@ -475,6 +532,7 @@ class Sequential
                         if (strcmp(registro.nombre, prev.nombre) >= 0 
                             && strcmp(registro.nombre, next.nombre) <= 0)
                         {
+                            cout << "ADD NO EXISTENTE AL MEDIO\n";
                             modifyRegisters(prev, registro, next);
                             return;
                         }
@@ -483,6 +541,7 @@ class Sequential
                     {
                         if (strcmp(registro.nombre, next.nombre) >= 0)
                         {
+                            cout << "ADD NO EXISTENTE AL FINAL\n";
                             modifyRegisters(prev, registro);
                             return;
                         }
@@ -568,11 +627,12 @@ int main()
     Registro reg7;
     strcpy(reg7.codigo, "8888");
     strcpy(reg7.nombre, "D");
-    strcpy(reg7.carrera, "cienciadelacomp");    
-    registros.push_back(reg0);
-    registros.push_back(reg1);
-    registros.push_back(reg2);
-    registros.push_back(reg3);
+    strcpy(reg7.carrera, "cienciadelacomp");   
+
+    // registros.push_back(reg0);
+    // registros.push_back(reg1);
+    // registros.push_back(reg2);
+    // registros.push_back(reg3);
     registros.push_back(reg4);
     registros.push_back(reg5);
     registros.push_back(reg6);
@@ -580,12 +640,14 @@ int main()
     // seq.readRecord("seqFile.txt", -1);
 
     seq.insertAll(registros);
-    seq.add(reg7);
-    seq.add(reg7);
+    // // No existe e insertar al final
+    // seq.add(reg7);
+    // // Existe e insertar al final
+    // seq.add(reg7);
+    // seq.add(reg7);
+    // No exister e insertar al inicio (cuando sí existe no se puede insertar al inicio)
+    seq.add(reg0);
     seq.loadAll();
-    // seq.load("seqFile.txt");
-    // seq.load("auxAdd.txt");
-    // seq.loadAll();
     // seq.search("A");
     // seq.search("A", "C");
     // seq.search("A", "B");
