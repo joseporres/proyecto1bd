@@ -30,8 +30,8 @@ void printRegistro(Registro reg)
     cout << reg.ciclo << endl;
     cout << reg.next << endl;
     cout << reg.toNext << endl;
-    // cout << reg.prev << endl;
-    // cout << reg.toPrev << endl;
+    cout << reg.prev << endl;
+    cout << reg.toPrev << endl;
     cout << endl;
 }
 
@@ -202,8 +202,7 @@ class Sequential
         {
             vector<Registro> registros;
             // consigo la cabecera
-            Registro reg = readRecord(nombre, 1, print);
-            registros.push_back(reg);
+            Registro reg = readRecord(nombre, 0, print);
 
             while (reg.next != -1)
             {
@@ -213,7 +212,7 @@ class Sequential
                 }
                 else
                 {
-                    reg = readRecord(nombre, reg.next, print);
+                    reg = readRecord(nombreAux, reg.next, print);
                 }
                 registros.push_back(reg);
             }
@@ -223,25 +222,34 @@ class Sequential
 
         void insertAll(vector<Registro> registros)
         {
-            fstream file;
-            file.open(nombre, ios::in | ios::out | ios::binary);
-            sort(registros.begin(), registros.end(), compare);
-            file.seekg(1 * sizeof(Registro), ios::beg);
-            for (int i = 0; i < registros.size(); ++i)
+            fstream fileAux;
+            fileAux.open(nombreAux, ios::in | ios::out | ios::binary);
+            fileAux.seekg(0, ios::end);
+            int x = fileAux.tellg();
+            fileAux.close();
+            if (x == 0)
             {
-                if (i < registros.size()-1) 
+                fstream file;
+                file.open(nombre, ios::in | ios::out | ios::binary);
+                sort(registros.begin(), registros.end(), compare);
+                file.seekg(1 * sizeof(Registro), ios::beg);
+                for (int i = 0; i < registros.size(); ++i)
                 {
-                    registros[i].next = i+1;
+                    if (i < registros.size()-1) 
+                    {
+                        registros[i].next = i+1;
+                    }
+                    if (i > 0)
+                    {
+                        registros[i].prev = i-1;
+                    }
+                    file.write((char*) &registros[i], sizeof(Registro));
                 }
-                if (i > 0)
-                {
-                    registros[i].prev = i-1;
-                }
-                file.write((char*) &registros[i], sizeof(Registro));
+                file.seekg(0, ios::beg);
+                file.write((char*) &registros[0], sizeof(Registro));
+                file.close();
             }
-            file.seekg(0, ios::beg);
-            file.write((char*) &registros[0], sizeof(Registro));
-            file.close();
+
         };
 
         vector<Registro> search(string key)
@@ -384,6 +392,7 @@ class Sequential
             vector<Registro> registros = loadAll(false);
             string s(registro.nombre);
             int pos = binarySearch(registros, s);
+            cout << s << pos << endl;
             // si lo encuentra
             if (pos != -1)
             {
@@ -424,12 +433,12 @@ class Sequential
                             if (prev.toPrev == 'm')
                             {
                                 filePrevPrev.open(nombre, ios::in | ios::out | ios::binary);
-                                filePrevPrev.seekg((registro.prev + 1) * sizeof(Registro), ios::beg);
+                                filePrevPrev.seekg((prev.prev + 1) * sizeof(Registro), ios::beg);
                             }
                             else
                             {
                                 filePrevPrev.open(nombreAux, ios::in | ios::out | ios::binary);
-                                filePrevPrev.seekg((registro.prev) * sizeof(Registro), ios::beg);
+                                filePrevPrev.seekg((prev.prev) * sizeof(Registro), ios::beg);
                             }
                             filePrevPrev.read((char*) &prevPrev, sizeof(Registro));
                             filePrevPrev.close();
@@ -559,9 +568,10 @@ int main()
 
     seq.insertAll(registros);
     seq.add(reg7);
+    seq.add(reg7);
     // seq.load("seqFile.txt");
     // seq.load("auxAdd.txt");
-    seq.loadAll();
+    // seq.loadAll();
     // seq.search("A");
     // seq.search("A", "C");
     // seq.search("A", "B");
