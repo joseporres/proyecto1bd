@@ -24,8 +24,8 @@ struct Registro
 
 void printRegistro(Registro reg)
 {
-    cout << reg.codigo << endl;
     cout << reg.nombre << endl;
+    cout << reg.codigo << endl;
     cout << reg.carrera << endl;
     cout << reg.ciclo << endl;
     cout << reg.next << endl;
@@ -152,6 +152,52 @@ class Sequential
             actualizeRegisters(prev, registro, next);
         }
 
+        void modifyRegisters(Registro prev, Registro registro)
+        {
+            // consigo el prev de mi prev
+            Registro prevPrev;
+            fstream filePrevPrev;
+            if (prev.toPrev == 'm')
+            {
+                filePrevPrev.open(nombre, ios::in | ios::out | ios::binary);
+                filePrevPrev.seekg((prev.prev + 1) * sizeof(Registro), ios::beg);
+            }
+            else
+            {
+                filePrevPrev.open(nombreAux, ios::in | ios::out | ios::binary);
+                filePrevPrev.seekg((prev.prev) * sizeof(Registro), ios::beg);
+            }
+            filePrevPrev.read((char*) &prevPrev, sizeof(Registro));
+            filePrevPrev.close();
+
+            fstream fileAux;
+            fileAux.open(nombreAux, ios::in | ios::out | ios::binary);
+            fileAux.seekg(0, ios::end);
+            // En el siguiente
+            prev.next   = fileAux.tellg();
+            prev.toNext = 'a';
+            // En el nuevo
+            registro.prev   = prevPrev.next;
+            registro.toPrev = prevPrev.toNext;
+            fileAux.write((char*) &registro, sizeof(Registro));                                    
+            fileAux.close();
+
+            fstream filePrev;
+            if (registro.toPrev == 'm')
+            {
+                filePrev.open(nombre, ios::in | ios::out | ios::binary);
+                filePrev.seekg((registro.prev + 1) * sizeof(Registro), ios::beg);
+                filePrev.write((char*) &prev, sizeof(Registro));
+            }
+            else
+            {
+                filePrev.open(nombreAux, ios::in | ios::out | ios::binary);
+                filePrev.seekg((registro.prev) * sizeof(Registro), ios::beg);
+                filePrev.write((char*) &prev, sizeof(Registro));
+            }
+            filePrev.close();
+        }
+
     public:
         Sequential(string nombre)
         {
@@ -203,6 +249,15 @@ class Sequential
             vector<Registro> registros;
             // consigo la cabecera
             Registro reg = readRecord(nombre, 0, print);
+            if (reg.toNext == 'm')
+            {
+                reg = readRecord(nombre, reg.next+1, print);
+            }
+            else
+            {
+                reg = readRecord(nombreAux, reg.next, print);
+            }
+            registros.push_back(reg);
 
             while (reg.next != -1)
             {
@@ -392,20 +447,21 @@ class Sequential
             vector<Registro> registros = loadAll(false);
             string s(registro.nombre);
             int pos = binarySearch(registros, s);
-            cout << s << pos << endl;
             // si lo encuentra
             if (pos != -1)
             {
+                Registro next = registros[pos];
                 for (int i = pos+1; i < registros.size(); ++i)
                 {
                     if (strcmp(registros[i].nombre, registro.nombre) != 0)
                     {
                         Registro prev = registros[i-1];
-                        Registro next = registros[i];
+                        next = registros[i];
                         modifyRegisters(prev, registro, next);
                         return;
                     }
                 }
+                modifyRegisters(next, registro);
             }
             else
             {
@@ -427,50 +483,7 @@ class Sequential
                     {
                         if (strcmp(registro.nombre, next.nombre) >= 0)
                         {
-                            // consigo el prev de mi prev
-                            Registro prevPrev;
-                            fstream filePrevPrev;
-                            if (prev.toPrev == 'm')
-                            {
-                                filePrevPrev.open(nombre, ios::in | ios::out | ios::binary);
-                                filePrevPrev.seekg((prev.prev + 1) * sizeof(Registro), ios::beg);
-                            }
-                            else
-                            {
-                                filePrevPrev.open(nombreAux, ios::in | ios::out | ios::binary);
-                                filePrevPrev.seekg((prev.prev) * sizeof(Registro), ios::beg);
-                            }
-                            filePrevPrev.read((char*) &prevPrev, sizeof(Registro));
-                            filePrevPrev.close();
-
-                            fstream fileAux;
-                            fileAux.open(nombreAux, ios::in | ios::out | ios::binary);
-                            fileAux.seekg(0, ios::end);
-                            // En el siguiente
-                            prev.next   = fileAux.tellg();
-                            prev.toNext = 'a';
-                            // En el nuevo
-                            registro.prev   = prevPrev.next;
-                            registro.toPrev = prevPrev.toNext;
-                            fileAux.write((char*) &registro, sizeof(Registro));                                    
-                            fileAux.close();
-
-                            fstream filePrev;
-                            if (registro.toPrev == 'm')
-                            {
-                                filePrev.open(nombre, ios::in | ios::out | ios::binary);
-                                filePrev.seekg((registro.prev + 1) * sizeof(Registro), ios::beg);
-                                filePrev.write((char*) &prev, sizeof(Registro));
-                            }
-                            else
-                            {
-                                filePrev.open(nombreAux, ios::in | ios::out | ios::binary);
-                                filePrev.seekg((registro.prev) * sizeof(Registro), ios::beg);
-                                filePrev.write((char*) &prev, sizeof(Registro));
-                            }
-                            filePrev.close();
-                            // printRegistro(prev);
-                            // printRegistro(registro);
+                            modifyRegisters(prev, registro);
                             return;
                         }
                     }
@@ -569,6 +582,7 @@ int main()
     seq.insertAll(registros);
     seq.add(reg7);
     seq.add(reg7);
+    seq.loadAll();
     // seq.load("seqFile.txt");
     // seq.load("auxAdd.txt");
     // seq.loadAll();
