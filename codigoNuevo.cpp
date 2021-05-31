@@ -30,8 +30,8 @@ void printRegistro(Registro reg)
     cout << reg.ciclo << endl;
     cout << reg.next << endl;
     cout << reg.toNext << endl;
-    cout << reg.prev << endl;
-    cout << reg.toPrev << endl;
+    // cout << reg.prev << endl;
+    // cout << reg.toPrev << endl;
     cout << endl;
 }
 
@@ -405,12 +405,67 @@ class Sequential
                     Registro prev = registros[i];
                     Registro next = registros[i+1];
 
-                    if (strcmp(registro.nombre, prev.nombre) >= 0 
-                        && strcmp(registro.nombre, next.nombre) <= 0)
+                    if (i+1 < registros.size())
                     {
-                        modifyRegisters(prev, registro, next);
-                        return;
+                        if (strcmp(registro.nombre, prev.nombre) >= 0 
+                            && strcmp(registro.nombre, next.nombre) <= 0)
+                        {
+                            modifyRegisters(prev, registro, next);
+                            return;
+                        }
                     }
+                    else
+                    {
+                        if (strcmp(registro.nombre, next.nombre) >= 0)
+                        {
+                            // consigo el prev de mi prev
+                            Registro prevPrev;
+                            fstream filePrevPrev;
+                            if (prev.toPrev == 'm')
+                            {
+                                filePrevPrev.open(nombre, ios::in | ios::out | ios::binary);
+                                filePrevPrev.seekg((registro.prev + 1) * sizeof(Registro), ios::beg);
+                            }
+                            else
+                            {
+                                filePrevPrev.open(nombreAux, ios::in | ios::out | ios::binary);
+                                filePrevPrev.seekg((registro.prev) * sizeof(Registro), ios::beg);
+                            }
+                            filePrevPrev.read((char*) &prevPrev, sizeof(Registro));
+                            filePrevPrev.close();
+
+                            fstream fileAux;
+                            fileAux.open(nombreAux, ios::in | ios::out | ios::binary);
+                            fileAux.seekg(0, ios::end);
+                            // En el siguiente
+                            prev.next   = fileAux.tellg();
+                            prev.toNext = 'a';
+                            // En el nuevo
+                            registro.prev   = prevPrev.next;
+                            registro.toPrev = prevPrev.toNext;
+                            fileAux.write((char*) &registro, sizeof(Registro));                                    
+                            fileAux.close();
+
+                            fstream filePrev;
+                            if (registro.toPrev == 'm')
+                            {
+                                filePrev.open(nombre, ios::in | ios::out | ios::binary);
+                                filePrev.seekg((registro.prev + 1) * sizeof(Registro), ios::beg);
+                                filePrev.write((char*) &prev, sizeof(Registro));
+                            }
+                            else
+                            {
+                                filePrev.open(nombreAux, ios::in | ios::out | ios::binary);
+                                filePrev.seekg((registro.prev) * sizeof(Registro), ios::beg);
+                                filePrev.write((char*) &prev, sizeof(Registro));
+                            }
+                            filePrev.close();
+                            // printRegistro(prev);
+                            // printRegistro(registro);
+                            return;
+                        }
+                    }
+
                 }
             }
         };
@@ -504,6 +559,8 @@ int main()
 
     seq.insertAll(registros);
     seq.add(reg7);
+    // seq.load("seqFile.txt");
+    // seq.load("auxAdd.txt");
     seq.loadAll();
     // seq.search("A");
     // seq.search("A", "C");
