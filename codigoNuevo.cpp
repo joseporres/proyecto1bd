@@ -400,14 +400,6 @@ class Sequential
             }
             else
             {
-                if (registros.size() == 0)
-                {
-                    fstream fileToWrite;
-                    fileToWrite.open(nombreAux, ios::in | ios::out | ios::binary);
-                    fileToWrite.write((char*) &registro, sizeof(Registro));
-                    fileToWrite.close();
-                    return;
-                }
                 for (int i = 0; i < registros.size(); ++i)
                 {
                     Registro prev = registros[i];
@@ -495,7 +487,11 @@ int main()
     Registro reg6;
     strcpy(reg6.codigo, "9999");
     strcpy(reg6.nombre, "C");
-    strcpy(reg6.carrera, "cienciadelacomp");        
+    strcpy(reg6.carrera, "cienciadelacomp");      
+    Registro reg7;
+    strcpy(reg7.codigo, "8888");
+    strcpy(reg7.nombre, "D");
+    strcpy(reg7.carrera, "cienciadelacomp");    
     registros.push_back(reg0);
     registros.push_back(reg1);
     registros.push_back(reg2);
@@ -506,8 +502,9 @@ int main()
     // Lee bien la cabecera creada en el constructor
     // seq.readRecord("seqFile.txt", -1);
 
-    // seq.add(reg0);
-    seq.add(reg0);
+    seq.insertAll(registros);
+    seq.add(reg7);
+    seq.loadAll();
     // seq.search("A");
     // seq.search("A", "C");
     // seq.search("A", "B");
