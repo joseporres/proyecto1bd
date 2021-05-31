@@ -343,8 +343,26 @@ class Sequential
             file.read((char*) &reg, sizeof(Registro));
             do
             {
-                Registro prev = readRecord(reg.toPrev == 'm' ? nombre : nombreAux, reg.prev, false);
-                Registro next = readRecord(reg.toNext == 'm' ? nombre : nombreAux, reg.next, false);
+                Registro prev;
+                if (reg.toPrev == 'm')
+                {
+                    prev = readRecord(nombre, reg.prev+1, false);
+                }
+                else
+                {
+                    prev = readRecord(nombreAux, reg.prev, false);                    
+                }
+                Registro next;
+                if (reg.toNext == 'm')
+                {
+                    next = readRecord(nombre, reg.next+1, false);
+                }
+                else
+                {
+                    next = readRecord(nombreAux, reg.next, false);                    
+                }
+
+
                 if (strcmp(registro.nombre, prev.nombre) >= 0 
                     && strcmp(registro.nombre, next.nombre) <= 0)
                 {
@@ -489,8 +507,7 @@ int main()
     // seq.readRecord("seqFile.txt", -1);
 
     // seq.add(reg0);
-    seq.insertAll(registros);
-    seq.loadAll();
+    seq.add(reg0);
     // seq.search("A");
     // seq.search("A", "C");
     // seq.search("A", "B");
