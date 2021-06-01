@@ -1047,7 +1047,8 @@ class Sequential
                 return true;
             }
             // Al medio es cuando no es al inicio ni al final
-            cout << "HACIENDO DELETE AL MEDIO\n";
+            cout << "HACIENDO DELETE AL MEDIO EN POS " << pos << endl;
+            // printRegistro(registros[pos]);
             fstream fileHeader;
             Registro header;
             fileHeader.open(nombre, ios::in | ios::out | ios::binary);
@@ -1067,9 +1068,11 @@ class Sequential
             header.toDel = registros[pos-1].toNext;
             // se actualiza el registro previo al eliminado
             registros[pos-1].next = tempNext;
+            registros[pos-1].toNext = registros[pos].toNext;
             // se actualiza el registro siguiente al eliminado
             int tempNextPrev = registros[pos+1].prev;
             registros[pos+1].prev = tempPrev;
+            registros[pos+1].toPrev = registros[pos+1].toPrev;
             // sobreescribir header
             fileHeader.open(nombre, ios::in | ios::out | ios::binary);
             fileHeader.seekg(0, ios::beg);
@@ -1120,6 +1123,10 @@ class Sequential
                 fileNextDeleted.write((char*) &registros[pos+1], sizeof(Registro));
             }
             fileNextDeleted.close();
+            // está bien
+            // printRegistro(registros[pos-1]);
+            // printRegistro(registros[pos]);
+            // printRegistro(registros[pos+1]);
             return true;
         };
 
@@ -1187,14 +1194,22 @@ int main()
     seq.add(regG);
     cout << "TEST SEARCH RANGO\n";
     seq.search("E", "G");
+    cout << "PRE DELETES\n";
+    seq.loadAll();
+    cout << "POST DELETES\n";
     // Tests de delete al inicio
     seq.delete_("A");
-    // Tests de delete al final
+    // // Tests de delete al final
     seq.delete_("G");
-    // Tests de delete al medio
+    // // Tests de delete al medio
+    // seq.printHeader();
     seq.delete_("E");
-    // cout << "TEST SEARCH RANGO DEPUÉS DE DELETES\n";
-    // seq.search("E", "G");        
+    // seq.load("seqFile.txt");
+    // seq.load("auxAdd.txt");
+    seq.loadAll();
+    cout << "TEST SEARCH RANGO DEPUÉS DE DELETES\n";
+    seq.search("E", "G");        
+    
     // seq.printAllDeleted();
     // Tests de add en un registro eliminado
     // add en un registro eliminado al inicio
