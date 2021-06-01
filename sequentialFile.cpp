@@ -74,6 +74,7 @@ class Sequential
     private:
         string nombre;
         string nombreAux = "auxAdd.txt";
+        int reconstructFactor = 5;
 
         void printInfoHeader(Registro reg)
         {
@@ -261,6 +262,57 @@ class Sequential
             }
         }
 
+        void tryToReconstruct()
+        {
+            fstream fileAux;
+            fileAux.open(nombreAux, ios::in | ios::out | ios::binary);
+            fileAux.seekg(0, ios::end);
+            int lines = fileAux.tellg()/sizeof(Registro);
+            if (lines >= reconstructFactor)
+            {
+                cout << "RECONSTRUYENDO...\n";
+                fileAux.close();
+                vector<Registro> registros = loadAll(false);
+                fstream fileMain;
+                Registro header;
+                fileMain.open(nombre, ios::in | ios::out | ios::binary);
+                fileMain.seekg(0, ios::beg);
+                fileMain.read((char*) &header, sizeof(Registro));
+                fileMain.close();
+                // borrar todo fileAux
+                fileAux.open(nombreAux, ios::out | ios::trunc);
+                fileAux.close();
+                // borrar todo fileMain
+                fileMain.open(nombre, ios::out | ios::trunc);      
+                // reescribir el header
+                header.next    = 0;
+                header.toNext  = 'm';
+                header.nextDel = -1;
+                header.toDel   = 'm';
+                fileMain.write((char*) &header, sizeof(Registro));
+                // reescribir en el main los resultados del loadAll
+                for (int i = 0; i < registros.size(); ++i)
+                {
+                    if (i < registros.size()-1) 
+                    {
+                        registros[i].next = i+1;
+                    }
+                    if (i > 0)
+                    {
+                        registros[i].prev = i-1;
+                    }
+                    registros[i].toNext = 'm';
+                    registros[i].toPrev = 'm';
+                    fileMain.write((char*) &registros[i], sizeof(Registro));
+                }
+                fileMain.close();
+            }
+            else
+            {
+                fileAux.close();
+            }
+        }
+
     public:
         Sequential(string nombre)
         {
@@ -279,6 +331,24 @@ class Sequential
             }
             file.close();
         }
+        Sequential(string nombre, int reconstructFactor)
+        {
+            this->nombre = nombre;
+            this->reconstructFactor = reconstructFactor;
+            fstream file;
+            file.open(nombre, ios::in | ios::out | ios::binary);
+            file.seekg(0, ios::end);
+            Registro reg;
+            strcpy(reg.codigo, "1111");
+            strcpy(reg.nombre, "cabeceraaaaaaaaaaaa");
+            strcpy(reg.carrera, "cienciadelacomp");
+            if (file.tellg() == 0)
+            {
+                cout << "ESCRIBIENDO CABECERA\n";
+                file.write((char*) &reg, sizeof(reg));
+            }
+            file.close();
+        }        
         ~Sequential(){};
 
         void printHeader()
@@ -740,11 +810,13 @@ class Sequential
                         cout << "ADD EXISTENTE AL MEDIO\n";
                         Registro prev = registros[i-1];
                         modifyRegisters(prev, registro, next);
+                        tryToReconstruct();
                         return;
                     }
                 }
                 cout << "ADD EXISTENTE AL FINAL\n";
                 modifyRegisters(next, registro);
+                tryToReconstruct();
             }
             else
             {
@@ -817,6 +889,7 @@ class Sequential
                         fileFirst.write((char*) &registros[0], sizeof(Registro));                   
                     }
                     fileFirst.close();
+                    tryToReconstruct();
                     return;
                 }
 
@@ -834,6 +907,7 @@ class Sequential
                         {
                             cout << "ADD NO EXISTENTE AL MEDIO\n";
                             modifyRegisters(prev, registro, next);
+                            tryToReconstruct();
                             return;
                         }
                     }
@@ -843,6 +917,7 @@ class Sequential
                         {
                             cout << "ADD NO EXISTENTE AL FINAL\n";
                             modifyRegisters(prev, registro);
+                            tryToReconstruct();
                             return;
                         }
                     }
@@ -1097,16 +1172,19 @@ int main()
     seq.add(regF);
     // Tests cuando sí existe y hacer insert al final.
     seq.add(regF);
+    // Tests de search
+    cout << "TEST SEARCH EXACTO\n";
+    seq.search("F");    
     seq.add(regF);
+    // Reconstrucción
+    seq.loadAll();
+    cout << "POST RECONSTRUCCIÓN\n";
     // Tests cuando no existe y hacer insert al medio
     seq.add(regE);
     // Tests cuando sí existe y hacer insert al medio
     seq.add(regE);
     // Tests cuando no existe y hacer insert al final.
     seq.add(regG);
-    // Tests de search
-    cout << "TEST SEARCH EXACTO\n";
-    seq.search("F");
     cout << "TEST SEARCH RANGO\n";
     seq.search("E", "G");
     // Tests de delete al inicio
@@ -1115,8 +1193,8 @@ int main()
     seq.delete_("G");
     // Tests de delete al medio
     seq.delete_("E");
-    cout << "TEST SEARCH RANGO DEPUÉS DE DELETES\n";
-    seq.search("E", "G");        
+    // cout << "TEST SEARCH RANGO DEPUÉS DE DELETES\n";
+    // seq.search("E", "G");        
     // seq.printAllDeleted();
     // Tests de add en un registro eliminado
     // add en un registro eliminado al inicio
