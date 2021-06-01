@@ -69,11 +69,18 @@ class Sequential
     private:
         string nombre;
         string nombreAux = "auxAdd.txt";
-        // Registro regAux;
-        // const int lengthCod = sizeof(regAux.codigo)/sizeof(regAux.codigo[0]);
-        // const int lengthNom = sizeof(regAux.nombre)/sizeof(regAux.nombre[0]);
-        // const int lengthCar = sizeof(regAux.carrera)/sizeof(regAux.carrera[0]);
-        // const int endline = sizeof(Registro);
+
+        void printInfoHeader(Registro reg)
+        {
+            cout << reg.nombre << endl;
+            // inicio de la lista doblemente enlazada (adelante y atrás) de no eliminados
+            cout << reg.next << endl;
+            cout << reg.toNext << endl;
+            // inicio de la lista enlazada (solo adelante) de eliminados LIFO
+            cout << reg.nextDel << endl;
+            cout << reg.toDel << endl;
+            cout << endl;
+        }
 
         bool static compare(Registro a, Registro b)
         {
@@ -246,7 +253,7 @@ class Sequential
             file.open(nombre, ios::in | ios::out | ios::binary);
             file.seekg(0, ios::beg);
             file.read((char*) &header, sizeof(Registro));
-            printRegistro(header);
+            printInfoHeader(header);
         }
 
         Registro readRecord(string nombre_, int pos, bool print = true)
@@ -627,6 +634,9 @@ class Sequential
                 fileHeader.seekg(0, ios::beg);
                 fileHeader.read((char*) &header, sizeof(Registro));  
                 fileHeader.close();
+                // el nextDel del registro eliminado es igual a la cabecera de la lista de eliminados
+                registros[pos].nextDel = header.nextDel;
+                registros[pos].toDel = header.toDel;
                 // se actualiza el inicio de la lista de NO eliminados
                 header.next   = registros[pos].next;
                 header.toNext = registros[pos].toNext;
@@ -635,9 +645,6 @@ class Sequential
                 header.toDel = registros[pos+1].toPrev;
                 int temp = registros[pos+1].prev;
                 registros[pos+1].prev = -1;
-                // el nextDel del registro eliminado es igual a la cabecera de la lista de eliminados
-                registros[pos].nextDel = header.nextDel;
-                registros[pos].toDel = header.toDel;
                 // sobreescribir header
                 fileHeader.open(nombre, ios::in | ios::out | ios::binary);
                 fileHeader.seekg(0, ios::beg);
@@ -679,6 +686,56 @@ class Sequential
             if (pos == registros.size() - 1)
             {
                 cout << "HACIENDO DELETE AL FINAL\n";
+                fstream fileHeader;
+                Registro header;
+                fileHeader.open(nombre, ios::in | ios::out | ios::binary);
+                fileHeader.seekg(0, ios::beg);
+                fileHeader.read((char*) &header, sizeof(Registro));  
+                fileHeader.close();
+                // el nextDel del registro eliminado es igual a la cabecera de la lista de eliminados
+                registros[pos].nextDel = header.nextDel;
+                registros[pos].toDel = header.toDel;
+                // se actualiza el inicio de la lista de eliminados
+                header.nextDel = registros[pos-1].next;
+                header.toDel = registros[pos-1].toNext;
+                int temp = registros[pos].prev;
+                registros[pos].prev = -1;
+                // sobreescribir header
+                fileHeader.open(nombre, ios::in | ios::out | ios::binary);
+                fileHeader.seekg(0, ios::beg);
+                fileHeader.write((char*) &header, sizeof(Registro));
+                fileHeader.close();
+                // sobreescribir el registro eliminado
+                fstream fileDeleted;
+                if (registros[pos-1].toNext == 'm')
+                {
+                    fileDeleted.open(nombre, ios::in | ios::out | ios::binary);
+                    fileDeleted.seekg((registros[pos-1].next + 1) * sizeof(Registro), ios::beg);
+                    fileDeleted.write((char*) &registros[pos], sizeof(Registro));
+                }
+                else
+                {
+                    fileDeleted.open(nombreAux, ios::in | ios::out | ios::binary);
+                    fileDeleted.seekg((registros[pos-1].next) * sizeof(Registro), ios::beg);
+                    fileDeleted.write((char*) &registros[pos], sizeof(Registro));
+                }
+                fileDeleted.close();
+                registros[pos-1].next = -1;
+                // sobreescribir el registro previo al eliminado
+                fstream filePrevDeleted;
+                if (registros[pos].toPrev == 'm')
+                {
+                    filePrevDeleted.open(nombre, ios::in | ios::out | ios::binary);
+                    filePrevDeleted.seekg((temp + 1) * sizeof(Registro), ios::beg);
+                    filePrevDeleted.write((char*) &registros[pos-1], sizeof(Registro));
+                }
+                else
+                {
+                    filePrevDeleted.open(nombreAux, ios::in | ios::out | ios::binary);
+                    filePrevDeleted.seekg((temp) * sizeof(Registro), ios::beg);
+                    filePrevDeleted.write((char*) &registros[pos-1], sizeof(Registro));
+                }
+                filePrevDeleted.close();
                 return true;
             }
             // Al medio es cuando no es al inicio ni al final
@@ -720,6 +777,10 @@ int main()
     strcpy(regF.codigo, "7777");
     strcpy(regF.nombre, "F");
     strcpy(regF.carrera, "cienciadelacomp");   
+    Registro regG;
+    strcpy(regG.codigo, "4444");
+    strcpy(regG.nombre, "G");
+    strcpy(regG.carrera, "cienciadelacomp");       
 
     registros.push_back(regC);
     registros.push_back(regD);
@@ -738,9 +799,17 @@ int main()
     seq.add(regE);
     // Tests cuando sí existe y hacer insert al medio
     seq.add(regE);
-    seq.loadAll();
+    // Tests cuando no existe y hacer insert al final.
+    seq.add(regG);
     // Tests de delete al inicio
-
+    seq.delete_("A");
+    seq.delete_("B");
+    // Tests de delete al final
+    seq.delete_("G");
+    // Tests de delete al medio
+    // seq.delete_("E");
+    // seq.loadAll();
+    seq.printHeader();
     // Tests de delete al medio
     // Tests de delete al final
 
