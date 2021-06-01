@@ -85,14 +85,30 @@ class Sequential
         {
             // actualizamos el prev
             fstream filePrev;
-            filePrev.open(registro.toPrev == 'm' ? nombre : nombreAux, ios::in | ios::out | ios::binary);
-            filePrev.seekg(registro.prev * sizeof(Registro), ios::beg);
+            if (registro.toPrev == 'm')
+            {
+                filePrev.open(nombre, ios::in | ios::out | ios::binary);
+                filePrev.seekg((registro.prev+1) * sizeof(Registro), ios::beg);
+            }
+            else
+            {
+                filePrev.open(nombreAux, ios::in | ios::out | ios::binary);
+                filePrev.seekg(registro.prev * sizeof(Registro), ios::beg);
+            }
             filePrev.write((char*) &prev, sizeof(Registro));
             filePrev.close();
             // actualizamos el next
             fstream fileNext;
-            fileNext.open(registro.toNext == 'm' ? nombre : nombreAux, ios::in | ios::out | ios::binary);
-            fileNext.seekg(registro.next * sizeof(Registro), ios::beg);
+            if (registro.toNext == 'm')
+            {
+                fileNext.open(nombre, ios::in | ios::out | ios::binary);
+                fileNext.seekg((registro.next+1) * sizeof(Registro), ios::beg);
+            }
+            else
+            {
+                fileNext.open(nombreAux, ios::in | ios::out | ios::binary);
+                fileNext.seekg(registro.next * sizeof(Registro), ios::beg);
+            }
             fileNext.write((char*) &next, sizeof(Registro));
             fileNext.close();
         }
@@ -215,10 +231,23 @@ class Sequential
             strcpy(reg.nombre, "cabeceraaaaaaaaaaaa");
             strcpy(reg.carrera, "cienciadelacomp");
             if (file.tellg() == 0)
+            {
+                cout << "ESCRIBIENDO CABECERA\n";
                 file.write((char*) &reg, sizeof(reg));
+            }
             file.close();
         }
         ~Sequential(){};
+
+        void printHeader()
+        {
+            Registro header;
+            fstream file;
+            file.open(nombre, ios::in | ios::out | ios::binary);
+            file.seekg(0, ios::beg);
+            file.read((char*) &header, sizeof(Registro));
+            printRegistro(header);
+        }
 
         Registro readRecord(string nombre_, int pos, bool print = true)
         {
@@ -253,7 +282,7 @@ class Sequential
         {
             vector<Registro> registros;
             // consigo la cabecera
-            Registro reg = readRecord(nombre, 0, print);
+            Registro reg = readRecord(nombre, 0, false);
             if (reg.toNext == 'm')
             {
                 reg = readRecord(nombre, reg.next+1, print);
@@ -262,6 +291,7 @@ class Sequential
             {
                 reg = readRecord(nombreAux, reg.next, print);
             }
+            // printRegistro(reg);
             registros.push_back(reg);
 
             while (reg.next != -1)
@@ -276,7 +306,6 @@ class Sequential
                 }
                 registros.push_back(reg);
             }
-
             return registros;
         }
 
@@ -305,8 +334,13 @@ class Sequential
                     }
                     file.write((char*) &registros[i], sizeof(Registro));
                 }
+                Registro header;
                 file.seekg(0, ios::beg);
-                file.write((char*) &registros[0], sizeof(Registro));
+                file.read((char*) &header, sizeof(Registro));
+                header.next = 0;
+                header.toNext = 'm';
+                file.seekg(0, ios::beg);
+                file.write((char*) &header, sizeof(Registro));
                 file.close();
             }
 
@@ -450,6 +484,7 @@ class Sequential
             // CASO 2: INSERTAR UN REGISTRO EN EL AUX
             // load a todos los registros de ambos archivos ordenados por sus "punteros".
             vector<Registro> registros = loadAll(false);
+            // cout << registros.size() << endl;
             string s(registro.nombre);
             int pos = binarySearch(registros, s);
             // si lo encuentra
@@ -461,6 +496,7 @@ class Sequential
                     next = registros[i];
                     if (strcmp(registros[i].nombre, registro.nombre) != 0)
                     {
+                        cout << "ADD EXISTENTE AL MEDIO\n";
                         Registro prev = registros[i-1];
                         modifyRegisters(prev, registro, next);
                         return;
@@ -473,6 +509,7 @@ class Sequential
             {
                 if (strcmp(registro.nombre, registros[0].nombre) < 0)
                 {
+                    // printRegistro(registros[0]);
                     cout << "ADD NO EXISTENTE AL INICIO\n";
                     // se cuenta la cantidad de líneas en el aux
                     fstream fileAux;
@@ -489,19 +526,19 @@ class Sequential
                     {
                         fileNextNext.open(nombre, ios::in | ios::out | ios::binary);
                         fileNextNext.seekg((registros[0].next + 1) * sizeof(Registro), ios::beg);
-                        fileNextNext.write((char*) &registros[0], sizeof(Registro));
+                        fileNextNext.read((char*) &nextNext, sizeof(Registro));
                     }
                     else
                     {
                         fileNextNext.open(nombreAux, ios::in | ios::out | ios::binary);   
-                        fileNextNext.seekg((registros[0].next) * sizeof(Registro), ios::beg);                     
-                        fileNextNext.write((char*) &registros[0], sizeof(Registro));
+                        fileNextNext.seekg((registros[0].next) * sizeof(Registro), ios::beg);  
+                        fileNextNext.read((char*) &nextNext, sizeof(Registro));                   
                     }
-                    fileNextNext.read((char*) &nextNext, sizeof(Registro));
                     fileNextNext.close();
 
-
                     // se modifica el registro a insertar haciendo que apunte como next a lo que apunta el nextNext como prev.
+                    fileAux.open(nombreAux, ios::in | ios::out | ios::binary);
+                    fileAux.seekg(0, ios::end);
                     registro.next   = nextNext.prev;
                     registro.toNext = nextNext.toPrev;
                     fileAux.write((char*) &registro, sizeof(Registro));
@@ -513,12 +550,32 @@ class Sequential
                     fileHeader.seekg(0, ios::beg);
                     // se lee la cabecera
                     fileHeader.read((char*) &regHeader, sizeof(Registro));
+                    // printRegistro(registros[0]);
+                    // printRegistro(regHeader);
+                    pair<int, char> temp = make_pair(regHeader.next, regHeader.toNext);
                     // se reescribe la cabecera en base al prev del anterior registro inicial
                     // porque este será el nuevo inicio de nuestros registros cuando iteremos en el loadAll.
                     regHeader.next   = registros[0].prev;
                     regHeader.toNext = registros[0].toPrev;
                     fileHeader.seekg(0, ios::beg);
                     fileHeader.write((char*) &regHeader, sizeof(Registro));
+                    fileHeader.close();
+
+                    fstream fileFirst;
+                    if (temp.second == 'm')
+                    {
+                        fileFirst.open(nombre, ios::in | ios::out | ios::binary);
+                        fileFirst.seekg((temp.first + 1) * sizeof(Registro), ios::beg);
+                        // cout << temp.first << endl;
+                        fileFirst.write((char*) &registros[0], sizeof(Registro));
+                    }
+                    else
+                    {
+                        fileFirst.open(nombreAux, ios::in | ios::out | ios::binary);   
+                        fileFirst.seekg((temp.first) * sizeof(Registro), ios::beg);  
+                        fileFirst.write((char*) &registros[0], sizeof(Registro));                   
+                    }
+                    fileFirst.close();
                     return;
                 }
 
@@ -529,8 +586,10 @@ class Sequential
 
                     if (i+1 < registros.size())
                     {
-                        if (strcmp(registro.nombre, prev.nombre) >= 0 
-                            && strcmp(registro.nombre, next.nombre) <= 0)
+                        // Por ejemplo, D < E < F verdadero, se considera < y no <= 
+                        // porque acá ya directamente es el caso en el que el binary search no lo encontró
+                        if (strcmp(prev.nombre, registro.nombre) < 0 
+                            && strcmp(registro.nombre, next.nombre) < 0)
                         {
                             cout << "ADD NO EXISTENTE AL MEDIO\n";
                             modifyRegisters(prev, registro, next);
@@ -552,40 +611,82 @@ class Sequential
         };
 
         // si deleteAll es false se borra el primero que encuentre con esa key, caso contrario se borran todos.
-        bool delete_(string key, bool deleteAll = false)
+        bool delete_(string key)
         {
             vector<Registro> registros = loadAll(false);
             int pos = binarySearch(registros, key);
             if (pos == -1) return false;
-            
-            fstream fileHeader;
-            Registro header;
-            fileHeader.open(nombre, ios::in | ios::out | ios::binary);
-            fileHeader.seekg(0, ios::beg);
-            fileHeader.read((char*) &header, sizeof(Registro));  
-            fileHeader.close();
 
-            if (!deleteAll)
+            // Al inicio (pos == 0)
+            if (pos == 0)
             {
-                modifyOnDeleteRegisters(registros, pos, header);
+                cout << "HACIENDO DELETE AL INICIO\n";
+                fstream fileHeader;
+                Registro header;
+                fileHeader.open(nombre, ios::in | ios::out | ios::binary);
+                fileHeader.seekg(0, ios::beg);
+                fileHeader.read((char*) &header, sizeof(Registro));  
+                fileHeader.close();
+                // se actualiza el inicio de la lista de NO eliminados
+                header.next   = registros[pos].next;
+                header.toNext = registros[pos].toNext;
+                int temp = registros[pos+1].prev;
+                registros[pos+1].prev = -1;
+                // el nextDel del registro eliminado es igual a la cabecera de la lista de eliminados
+                registros[pos].nextDel = header.nextDel;
+                registros[pos].toDel = header.toDel;
+                // se actualiza el inicio de la lista de eliminados
+                header.nextDel = registros[pos+1].prev;
+                header.toDel = registros[pos+1].toPrev;
+                // sobreescribir header
+                fstream fileHeader;
+                fileHeader.open(nombre, ios::in | ios::out | ios::binary);
+                fileHeader.seekg(0, ios::beg);
+                fileHeader.write((char*) &header, sizeof(Registro));
+                fileHeader.close();
+                // sobreescribir el registro eliminado
+                fstream fileDeleted;
+                if (registros[pos+1].toPrev == 'm')
+                {
+                    fileDeleted.open(nombre, ios::in | ios::out | ios::binary);
+                    fileDeleted.seekg((registros[pos+1].prev + 1) * sizeof(Registro), ios::beg);
+                    fileDeleted.write((char*) &registros[pos], sizeof(Registro));
+                }
+                else
+                {
+                    fileDeleted.open(nombreAux, ios::in | ios::out | ios::binary);
+                    fileDeleted.seekg((registros[pos+1].prev) * sizeof(Registro), ios::beg);
+                    fileDeleted.write((char*) &registros[pos], sizeof(Registro));
+                }
+                fileDeleted.close();
+                // sobreescribir el registro siguiente al eliminado
+                fstream fileNextDeleted;
+                if (registros[pos].toNext == 'm')
+                {
+                    fileNextDeleted.open(nombre, ios::in | ios::out | ios::binary);
+                    fileNextDeleted.seekg((registros[pos].next + 1) * sizeof(Registro), ios::beg);
+                    fileNextDeleted.write((char*) &registros[pos], sizeof(Registro));
+                }
+                else
+                {
+                    fileNextDeleted.open(nombreAux, ios::in | ios::out | ios::binary);
+                    fileNextDeleted.seekg((registros[pos].next) * sizeof(Registro), ios::beg);
+                    fileNextDeleted.write((char*) &registros[pos], sizeof(Registro));
+                }
+                fileNextDeleted.close();
                 return true;
             }
-        
-            modifyOnDeleteRegisters(registros, pos, header);
-            char charKey[key.length()+1];
-            strcpy(charKey, key.c_str());             
-            // ir hacia adelante
-            for (int i = pos+1; i < registros.size(); ++i)
+            // Al final (pos == registros.size() - 1)
+            if (pos == registros.size() - 1)
             {
-                if (strcmp(registros[i].nombre, charKey) != 0) break;
-                modifyOnDeleteRegisters(registros, i, header);
+                cout << "HACIENDO DELETE AL FINAL\n";
+                return true;
             }
-            // ir hacia atrás
-            for (int i = pos-1; i > 0; --i)
-            {
-                if (strcmp(registros[i].nombre, charKey) != 0) break;
-                modifyOnDeleteRegisters(registros, i, header);
-            }
+            // Al medio es cuando no es al inicio ni al final
+            cout << "HACIENDO DELETE AL MEDIO\n";
+            
+
+            // modifyOnDeleteRegisters(registros, pos, header);
             return true;
         };
 
@@ -596,63 +697,53 @@ int main()
 {
     Sequential seq("seqFile.txt");
     vector<Registro> registros;
-    Registro reg0;
-    strcpy(reg0.codigo, "7774");
-    strcpy(reg0.nombre, "A");
-    strcpy(reg0.carrera, "cienciadelacomp");
-    Registro reg1;
-    strcpy(reg1.codigo, "7774");
-    strcpy(reg1.nombre, "A");
-    strcpy(reg1.carrera, "cienciadelacomp");    
-    Registro reg2;
-    strcpy(reg2.codigo, "7774");
-    strcpy(reg2.nombre, "A");
-    strcpy(reg2.carrera, "cienciadelacomp");        
-    Registro reg3;
-    strcpy(reg3.codigo, "7774");
-    strcpy(reg3.nombre, "A");
-    strcpy(reg3.carrera, "cienciadelacomp");        
-    Registro reg4;
-    strcpy(reg4.codigo, "9999");
-    strcpy(reg4.nombre, "B");
-    strcpy(reg4.carrera, "cienciadelacomp");        
-    Registro reg5;
-    strcpy(reg5.codigo, "9999");
-    strcpy(reg5.nombre, "B");
-    strcpy(reg5.carrera, "cienciadelacomp");   
-    Registro reg6;
-    strcpy(reg6.codigo, "9999");
-    strcpy(reg6.nombre, "C");
-    strcpy(reg6.carrera, "cienciadelacomp");      
-    Registro reg7;
-    strcpy(reg7.codigo, "8888");
-    strcpy(reg7.nombre, "D");
-    strcpy(reg7.carrera, "cienciadelacomp");   
+    Registro regA;
+    strcpy(regA.codigo, "2222");
+    strcpy(regA.nombre, "A");
+    strcpy(regA.carrera, "cienciadelacomp");
+    Registro regB;
+    strcpy(regB.codigo, "9999");
+    strcpy(regB.nombre, "B");
+    strcpy(regB.carrera, "cienciadelacomp");
+    Registro regC;
+    strcpy(regC.codigo, "6666");
+    strcpy(regC.nombre, "C");
+    strcpy(regC.carrera, "cienciadelacomp");      
+    Registro regD;
+    strcpy(regD.codigo, "8888");
+    strcpy(regD.nombre, "D");
+    strcpy(regD.carrera, "cienciadelacomp");   
+    Registro regE;
+    strcpy(regE.codigo, "3333");
+    strcpy(regE.nombre, "E");
+    strcpy(regE.carrera, "cienciadelacomp");   
+    Registro regF;
+    strcpy(regF.codigo, "7777");
+    strcpy(regF.nombre, "F");
+    strcpy(regF.carrera, "cienciadelacomp");   
 
-    // registros.push_back(reg0);
-    // registros.push_back(reg1);
-    // registros.push_back(reg2);
-    // registros.push_back(reg3);
-    registros.push_back(reg4);
-    registros.push_back(reg5);
-    registros.push_back(reg6);
-    // Lee bien la cabecera creada en el constructor
-    // seq.readRecord("seqFile.txt", -1);
-
+    registros.push_back(regC);
+    registros.push_back(regD);
     seq.insertAll(registros);
-    // // No existe e insertar al final
-    // seq.add(reg7);
-    // // Existe e insertar al final
-    // seq.add(reg7);
-    // seq.add(reg7);
-    // No exister e insertar al inicio (cuando sí existe no se puede insertar al inicio)
-    seq.add(reg0);
+    // TESTS DE INSERTS CUANDO NO HAY DELETE
+    // Tests cuando no existe y hace insert al inicio.
+    seq.add(regB);
+    seq.add(regA);
+    // seq.loadAll();
+    // Tests cuando no existe y hacer insert al final.
+    seq.add(regF);
+    // Tests cuando sí existe y hacer insert al final.
+    seq.add(regF);
+    seq.add(regF);
+    // Tests cuando no existe y hacer insert al medio
+    seq.add(regE);
+    // Tests cuando sí existe y hacer insert al medio
+    seq.add(regE);
     seq.loadAll();
-    // seq.search("A");
-    // seq.search("A", "C");
-    // seq.search("A", "B");
-    // seq.load("seqFile.txt");
+    // Tests de delete al inicio
 
+    // Tests de delete al medio
+    // Tests de delete al final
 
     return 0;
 };
