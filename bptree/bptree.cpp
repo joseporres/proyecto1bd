@@ -53,7 +53,6 @@ class bptree
     private:
         string indexFile;
         string dataFile;
-        float aux;
 
         bool isEmpty(string name)
         {
@@ -121,6 +120,7 @@ class bptree
                 if (addUtil(nextNode, reg, dataPos)) 
                 {
                     // Acá nos faltó la lógica de realizar un split
+                    // split(node, posNodo);
                 }
             }
             bool overflow = node.overflow();
@@ -183,7 +183,6 @@ class bptree
         {
             this->indexFile = indexFile;
             this->dataFile = dataFile;
-            aux = order / 2.0f;
         };
 
          
@@ -198,6 +197,7 @@ class bptree
                 if (addUtil(root, reg, dataPos)) 
                 {
                     // Acá nos faltó la lógica de realizar un split
+                    // splitRoot(root);
                 }
                 return;
             }
