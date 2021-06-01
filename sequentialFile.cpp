@@ -1130,11 +1130,8 @@ int main()
     strcpy(regG.nombre, "G");
     strcpy(regG.carrera, "cienciadelacomp");       
 
-    // for (int i = 0; i < 50; ++i)
-    {
-        registros.push_back(regC);
-        registros.push_back(regD);
-    }
+    registros.push_back(regC);
+    registros.push_back(regD);
     // cout << registros.size() << endl;
 
     seq.insertAll(registros);
@@ -1144,9 +1141,9 @@ int main()
     seq.add(regB);
     seq.add(regA);
     // seq.loadAll();
-    // Tests cuando no existe y hacer insert al final.
+    // Tests cuando no existe y hace insert al final.
     seq.add(regF);
-    // Tests cuando sí existe y hacer insert al final.
+    // Tests cuando sí existe y hace insert al final.
     seq.add(regF);
     // Tests de search
     cout << "TEST SEARCH EXACTO\n";
