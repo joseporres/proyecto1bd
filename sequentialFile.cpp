@@ -22,7 +22,7 @@ struct Registro
 };
 
 
-void printRegistro(Registro reg)
+void printRegistro(Registro reg, bool elimData = false)
 {
     cout << reg.nombre << endl;
     cout << reg.codigo << endl;
@@ -32,6 +32,11 @@ void printRegistro(Registro reg)
     cout << reg.toNext << endl;
     cout << reg.prev << endl;
     cout << reg.toPrev << endl;
+    if (elimData)
+    {
+        cout << reg.nextDel << endl;
+        cout << reg.toDel << endl;    
+    }
     cout << endl;
 }
 
@@ -194,6 +199,68 @@ class Sequential
             filePrev.close();
         }
 
+        void actualizeElimPointers(pair<int, char> goToprevElim, Registro prevElim, Registro elim)
+        {
+            // se ha actualizado el head de la lista de eliminados
+            if (goToprevElim.first == -1)
+            {
+                fstream fileHeader;
+                Registro header;
+                // se cambiar el header por el siguiente
+                fileHeader.open(nombre, ios::in | ios::out | ios::binary);
+                fileHeader.seekg(0, ios::beg);
+                fileHeader.read((char*) &header, sizeof(Registro));
+                pair<int, char> temp = make_pair(header.nextDel, header.toDel);
+                header.nextDel = elim.nextDel;
+                header.toDel = elim.toDel;
+                fileHeader.seekg(0, ios::beg);
+                fileHeader.write((char*) &header, sizeof(Registro));
+
+                if (elim.prev == -1)
+                {
+                    header.next   = temp.first;
+                    header.toNext = temp.second;
+                    fileHeader.seekg(0, ios::beg);
+                    fileHeader.write((char*) &header, sizeof(Registro));
+                }
+                fileHeader.close();
+            }
+            else
+            {
+                // se cambiar el prev elim por lo que antes apuntaba el elim, ya que en elim ahora hay un nuevo registro
+                prevElim.nextDel = elim.nextDel;
+                prevElim.toDel = elim.toDel;
+                fstream fileActualize;
+                if (goToprevElim.second == 'm')
+                {
+                    fileActualize.open(nombre, ios::in | ios::out | ios::binary);
+                    fileActualize.seekg((goToprevElim.first+1)*sizeof(Registro), ios::beg);
+                }
+                else
+                {
+                    fileActualize.open(nombreAux, ios::in | ios::out | ios::binary);
+                    fileActualize.seekg((goToprevElim.first)*sizeof(Registro), ios::beg);
+                }
+                fileActualize.write((char*) &prevElim, sizeof(Registro));
+                fileActualize.close();
+
+                if (elim.prev == -1)
+                {
+                    fstream fileHeader;
+                    Registro header;
+                    // se actualiza el inicio de la lista de los no eliminados
+                    fileHeader.open(nombre, ios::in | ios::out | ios::binary);
+                    fileHeader.seekg(0, ios::beg);
+                    fileHeader.read((char*) &header, sizeof(Registro));
+                    header.next   = prevElim.next;
+                    header.toNext = prevElim.toNext;
+                    fileHeader.seekg(0, ios::beg);
+                    fileHeader.write((char*) &header, sizeof(Registro));
+                    fileHeader.close();                
+                }
+            }
+        }
+
     public:
         Sequential(string nombre)
         {
@@ -222,6 +289,41 @@ class Sequential
             file.seekg(0, ios::beg);
             file.read((char*) &header, sizeof(Registro));
             printInfoHeader(header);
+        }
+
+        void printAllDeleted()
+        {
+            Registro header;
+            fstream file;
+            file.open(nombre, ios::in | ios::out | ios::binary);
+            file.seekg(0, ios::beg);
+            file.read((char*) &header, sizeof(Registro));
+            Registro current;
+            if (header.nextDel != -1)
+            {
+                if (header.toDel == 'm')
+                {
+                    current = readRecord(nombre, header.nextDel+1, false);
+                }
+                else
+                {
+                    current = readRecord(nombreAux, header.nextDel, false);
+                }
+                printRegistro(current, true);
+            }
+            while (current.nextDel != -1)
+            {
+                if (current.toDel == 'm')
+                {
+                    current = readRecord(nombre, current.nextDel+1, false);
+                }
+                else
+                {
+                    current = readRecord(nombreAux, current.nextDel, false);
+                }                
+                printRegistro(current, true);
+            }
+            
         }
 
         Registro readRecord(string nombre_, int pos, bool print = true)
@@ -323,90 +425,133 @@ class Sequential
 
         vector<Registro> search(string key)
         {
-            vector<Registro> registros = load(nombre, false);
-            vector<Registro> registrosAux = load(nombreAux, false);
+            vector<Registro> registros = loadAll(false);
             vector<Registro> registrosEncontrados;
             char charKey[key.length()+1];
-            strcpy(charKey, key.c_str()); 
-
+            strcpy(charKey, key.c_str());
             int pos = binarySearch(registros, key);
-            if (pos != -1)
+            if (pos == -1) return registrosEncontrados;
+            // el actual
+            printRegistro(registros[pos]);
+            registrosEncontrados.push_back(registros[pos]);
+            // ir hacia adelante
+            for (int i = pos+1; i < registros.size(); ++i)
             {
-                // el actual
-                printRegistro(registros[pos]);
-                registrosEncontrados.push_back(registros[pos]);
-                // ir hacia adelante
-                for (int i = pos+1; i < registros.size(); ++i)
-                {
-                    if (strcmp(registros[i].nombre, charKey) != 0) break;
-                    printRegistro(registros[i]);
-                    registrosEncontrados.push_back(registros[i]);
-                }
-                // ir hacia atrás
-                for (int i = pos-1; i >= 0; --i)
-                {
-                    if (strcmp(registros[i].nombre, charKey) != 0) break;
-                    printRegistro(registros[i]);
-                    registrosEncontrados.push_back(registros[i]);
-                }
+                if (strcmp(registros[i].nombre, charKey) != 0) break;
+                printRegistro(registros[i]);
+                registrosEncontrados.push_back(registros[i]);
             }
+            // ir hacia atrás
+            for (int i = pos-1; i >= 0; --i)
+            {
+                if (strcmp(registros[i].nombre, charKey) != 0) break;
+                printRegistro(registros[i]);
+                registrosEncontrados.push_back(registros[i]);
+            }            
 
-            // linear en el archivo auxiliar
-            for (int i = 0; i < registrosAux.size(); ++i)
-            {
-                // si lo encuentra
-                if (strcmp(registrosAux[i].nombre, charKey) == 0)
-                {
-                    printRegistro(registrosAux[i]);
-                    registrosEncontrados.push_back(registrosAux[i]);
-                }
-            }
+            // vector<Registro> registros = load(nombre, false);
+            // vector<Registro> registrosAux = load(nombreAux, false);
+
+
+            // if (pos != -1)
+            // {
+            //     // el actual
+            //     printRegistro(registros[pos]);
+            //     registrosEncontrados.push_back(registros[pos]);
+            //     // ir hacia adelante
+            //     for (int i = pos+1; i < registros.size(); ++i)
+            //     {
+            //         if (strcmp(registros[i].nombre, charKey) != 0) break;
+            //         printRegistro(registros[i]);
+            //         registrosEncontrados.push_back(registros[i]);
+            //     }
+            //     // ir hacia atrás
+            //     for (int i = pos-1; i >= 0; --i)
+            //     {
+            //         if (strcmp(registros[i].nombre, charKey) != 0) break;
+            //         printRegistro(registros[i]);
+            //         registrosEncontrados.push_back(registros[i]);
+            //     }
+            // }
+
+            // // linear en el archivo auxiliar
+            // for (int i = 0; i < registrosAux.size(); ++i)
+            // {
+            //     // si lo encuentra
+            //     if (strcmp(registrosAux[i].nombre, charKey) == 0)
+            //     {
+            //         printRegistro(registrosAux[i]);
+            //         registrosEncontrados.push_back(registrosAux[i]);
+            //     }
+            // }
             return registrosEncontrados;
         };
 
         vector<Registro> search(string begin, string end)
         {
-            vector<Registro> registros = load(nombre, false);
-            vector<Registro> registrosAux = load(nombreAux, false);
+            vector<Registro> registros = loadAll(false);
             vector<Registro> registrosEncontrados;
             char charBeg[begin.length()+1];
             strcpy(charBeg, begin.c_str()); 
             char charEnd[end.length()+1];
             strcpy(charEnd, end.c_str()); 
-
             int pos = binarySearch(registros, begin);
-            if (pos != -1)
+            if (pos == -1) return registrosEncontrados;
+            // cout << "POS: " << pos << " SIZE: " << registros.size() << endl;
+            // el actual
+            printRegistro(registros[pos]);
+            registrosEncontrados.push_back(registros[pos]);
+            // ir hacia atrás repetidos
+            for (int i = pos-1; i >= 0; --i)
             {
-                // el actual
-                printRegistro(registros[pos]);
-                registrosEncontrados.push_back(registros[pos]);
-                // ir hacia adelante
-                for (int i = pos+1; i < registros.size(); ++i)
-                {
-                    if (strcmp(registros[i].nombre, charEnd) > 0) break;
-                    printRegistro(registros[i]);
-                    registrosEncontrados.push_back(registros[i]);
-                }
-                // ir hacia atrás
-                for (int i = pos-1; i >= 0; --i)
-                {
-                    if (strcmp(registros[i].nombre, charBeg) != 0) break;
-                    printRegistro(registros[i]);
-                    registrosEncontrados.push_back(registros[i]);
-                }
+                if (strcmp(registros[i].nombre, charBeg) != 0) break;
+                printRegistro(registros[i]);
+                registrosEncontrados.push_back(registros[i]);
             }
+            // ir hacia adelante hasta el charEnd
+            for (int i = pos+1; i < registros.size(); ++i)
+            {
+                if (strcmp(registros[i].nombre, charEnd) > 0) break;
+                printRegistro(registros[i]);
+                registrosEncontrados.push_back(registros[i]);
+            }   
 
-            // linear en el archivo auxiliar
-            for (int i = 0; i < registrosAux.size(); ++i)
-            {
-                // si está en el rango
-                if ((strcmp(registrosAux[i].nombre, charBeg) >= 0)  
-                    && (strcmp(registrosAux[i].nombre, charEnd) <= 0))
-                {
-                    printRegistro(registrosAux[i]);
-                    registrosEncontrados.push_back(registrosAux[i]);
-                }
-            }
+            // vector<Registro> registros = load(nombre, false);
+            // vector<Registro> registrosAux = load(nombreAux, false);
+
+            // int pos = binarySearch(registros, begin);
+            // if (pos != -1)
+            // {
+            //     // el actual
+            //     printRegistro(registros[pos]);
+            //     registrosEncontrados.push_back(registros[pos]);
+            //     // ir hacia adelante
+            //     for (int i = pos+1; i < registros.size(); ++i)
+            //     {
+            //         if (strcmp(registros[i].nombre, charEnd) > 0) break;
+            //         printRegistro(registros[i]);
+            //         registrosEncontrados.push_back(registros[i]);
+            //     }
+            //     // ir hacia atrás
+            //     for (int i = pos-1; i >= 0; --i)
+            //     {
+            //         if (strcmp(registros[i].nombre, charBeg) != 0) break;
+            //         printRegistro(registros[i]);
+            //         registrosEncontrados.push_back(registros[i]);
+            //     }
+            // }
+
+            // // linear en el archivo auxiliar
+            // for (int i = 0; i < registrosAux.size(); ++i)
+            // {
+            //     // si está en el rango
+            //     if ((strcmp(registrosAux[i].nombre, charBeg) >= 0)  
+            //         && (strcmp(registrosAux[i].nombre, charEnd) <= 0))
+            //     {
+            //         printRegistro(registrosAux[i]);
+            //         registrosEncontrados.push_back(registrosAux[i]);
+            //     }
+            // }
             return registrosEncontrados;
         };
 
@@ -414,47 +559,168 @@ class Sequential
         {
             // CASO 1: INSERTAR EN UN REGISTRO ELIMINADO USANDO LIFO
             fstream file;
-            Registro reg;
+            Registro head;
             file.open(nombre, ios::in | ios::out | ios::binary);
             file.seekg(0, ios::beg);
-            file.read((char*) &reg, sizeof(Registro));
-            do
-            {
-                Registro prev;
-                if (reg.toPrev == 'm')
-                {
-                    prev = readRecord(nombre, reg.prev+1, false);
-                }
-                else
-                {
-                    prev = readRecord(nombreAux, reg.prev, false);                    
-                }
-                Registro next;
-                if (reg.toNext == 'm')
-                {
-                    next = readRecord(nombre, reg.next+1, false);
-                }
-                else
-                {
-                    next = readRecord(nombreAux, reg.next, false);                    
-                }
-
-
-                if (strcmp(registro.nombre, prev.nombre) >= 0 
-                    && strcmp(registro.nombre, next.nombre) <= 0)
-                {
-                    // escribo
-                    fstream fileToWrite;
-                    fileToWrite.open(reg.toDel == 'm' ? nombre : nombreAux, ios::in | ios::out | ios::binary);
-                    fileToWrite.seekg(reg.nextDel * sizeof(Registro), ios::beg);
-                    fileToWrite.write((char*) &registro, sizeof(Registro));
-                    fileToWrite.close();
-                    file.close();
-                    return;
-                }
-                reg = readRecord(reg.toDel == 'm' ? nombre : nombreAux, reg.nextDel, false);
-            } while (reg.nextDel != -1); 
+            file.read((char*) &head, sizeof(Registro));
             file.close();
+            Registro elim;
+            if (head.nextDel != -1)
+            {
+                if (head.toDel == 'm')
+                {
+                    elim = readRecord(nombre, head.nextDel+1, false);
+                }
+                else
+                {
+                    elim = readRecord(nombreAux, head.nextDel, false);
+                }
+            }
+            Registro prevElim = elim;
+            pair<int, char> goToPrevElim = make_pair(-1, 'm');
+            if (elim.nextDel != -1)
+            {
+                while (true)
+                {
+                    // está al inicio
+                    if (elim.prev == -1)
+                    {
+                        Registro next;
+                        if (elim.toNext == 'm')
+                        {
+                            next = readRecord(nombre, elim.next+1, false);
+                        }
+                        else
+                        {
+                            next = readRecord(nombreAux, elim.next, false);                    
+                        }
+
+                        if (strcmp(registro.nombre, next.nombre) <= 0)
+                        {
+                            // sobreescribo en ese espacio eliminado que está al inicio
+                            cout << "ADD EN ESPACIO ELIMINADO QUE ESTÁ AL INICIO\n";
+                            fstream fileToWrite;
+                            if (next.toPrev == 'm')
+                            {
+                                fileToWrite.open(nombre, ios::in | ios::out | ios::binary);
+                                fileToWrite.seekg((next.prev+1)*sizeof(Registro), ios::beg);
+                            }
+                            else
+                            {
+                                fileToWrite.open(nombreAux, ios::in | ios::out | ios::binary);
+                                fileToWrite.seekg((next.prev)*sizeof(Registro), ios::beg);
+                            }
+                            registro.next   = elim.next;
+                            registro.toNext = elim.toNext;
+                            fileToWrite.write((char*) &registro, sizeof(Registro));
+                            fileToWrite.close();
+                            actualizeElimPointers(goToPrevElim, prevElim, elim);
+                            return;
+                        }
+                    }
+                    // está al final
+                    if (elim.next == -1)
+                    {
+                        Registro prev;
+                        if (elim.toPrev == 'm')
+                        {
+                            prev = readRecord(nombre, elim.prev+1, false);
+                        }
+                        else
+                        {
+                            prev = readRecord(nombreAux, elim.prev, false);                    
+                        }
+
+                        if (strcmp(prev.nombre, registro.nombre) <= 0)
+                        {
+                            // sobreescribo en ese espacio eliminado que está al final
+                            cout << "ADD EN ESPACIO ELIMINADO QUE ESTÁ AL FINAL\n";
+                            fstream fileToWrite;
+                            if (prev.toNext == 'm')
+                            {
+                                fileToWrite.open(nombre, ios::in | ios::out | ios::binary);
+                                fileToWrite.seekg((prev.next+1)*sizeof(Registro), ios::beg);
+                            }
+                            else
+                            {
+                                fileToWrite.open(nombreAux, ios::in | ios::out | ios::binary);
+                                fileToWrite.seekg((prev.next)*sizeof(Registro), ios::beg);
+                            }
+                            registro.prev   = elim.prev;
+                            registro.toPrev = elim.toPrev;
+                            fileToWrite.write((char*) &registro, sizeof(Registro));
+                            fileToWrite.close();
+                            actualizeElimPointers(goToPrevElim, prevElim, elim);
+                            return;
+                        }
+                    }
+                    // está al medio
+                    Registro prev;
+                    if (elim.toPrev == 'm')
+                    {
+                        prev = readRecord(nombre, elim.prev+1, false);
+                    }
+                    else
+                    {
+                        prev = readRecord(nombreAux, elim.prev, false);                    
+                    }
+                    Registro next;
+                    if (elim.toNext == 'm')
+                    {
+                        next = readRecord(nombre, elim.next+1, false);
+                    }
+                    else
+                    {
+                        next = readRecord(nombreAux, elim.next, false);                    
+                    }
+
+                    if (strcmp(prev.nombre, registro.nombre) <= 0 
+                        && strcmp(registro.nombre, next.nombre) <= 0)
+                    {
+                        // sobreescribo en ese espacio eliminado que está al medio
+                        cout << "ADD EN ESPACIO ELIMINADO QUE ESTÁ AL MEDIO\n";
+                        fstream fileToWrite;
+                        if (prev.toNext == 'm')
+                        {
+                            fileToWrite.open(nombre, ios::in | ios::out | ios::binary);
+                            fileToWrite.seekg((prev.next+1)*sizeof(Registro), ios::beg);
+                        }
+                        else
+                        {
+                            fileToWrite.open(nombreAux, ios::in | ios::out | ios::binary);
+                            fileToWrite.seekg((prev.next)*sizeof(Registro), ios::beg);
+                        }
+                        registro.next   = elim.next;
+                        registro.toNext = elim.toNext;
+                        registro.prev   = elim.prev;
+                        registro.toPrev = elim.toPrev;
+                        fileToWrite.write((char*) &registro, sizeof(Registro));
+                        fileToWrite.close();
+                        actualizeElimPointers(goToPrevElim, prevElim, elim);
+                        return;
+                    }
+                    // final de la lista de eliminados
+                    if (elim.nextDel == -1) break;
+                    prevElim = elim;
+                    if (goToPrevElim.first == -1)
+                    {
+                        goToPrevElim = make_pair(head.nextDel, head.toDel);
+                    }
+                    else
+                    {
+                        goToPrevElim = make_pair(prevElim.nextDel, prevElim.toDel);
+                    }
+
+                    if (elim.toDel == 'm')
+                    {
+                        elim = readRecord(nombre, elim.nextDel+1, false);
+                    }
+                    else
+                    {
+                        elim = readRecord(nombre, elim.nextDel, false);
+                    }
+                } 
+            }
 
             // CASO 2: INSERTAR UN REGISTRO EN EL AUX
             // load a todos los registros de ambos archivos ordenados por sus "punteros".
@@ -611,7 +877,7 @@ class Sequential
                 header.nextDel = registros[pos+1].prev;
                 header.toDel = registros[pos+1].toPrev;
                 int temp = registros[pos+1].prev;
-                registros[pos+1].prev = -1;
+                // registros[pos+1].prev = -1;
                 // sobreescribir header
                 fileHeader.open(nombre, ios::in | ios::out | ios::binary);
                 fileHeader.seekg(0, ios::beg);
@@ -666,7 +932,7 @@ class Sequential
                 header.nextDel = registros[pos-1].next;
                 header.toDel = registros[pos-1].toNext;
                 int temp = registros[pos].prev;
-                registros[pos].prev = -1;
+                // registros[pos].prev = -1;
                 // sobreescribir header
                 fileHeader.open(nombre, ios::in | ios::out | ios::binary);
                 fileHeader.seekg(0, ios::beg);
@@ -719,8 +985,8 @@ class Sequential
             registros[pos].toDel = header.toDel;
             int tempPrev = registros[pos].prev;
             int tempNext = registros[pos].next;
-            registros[pos].prev = -1;
-            registros[pos].next = -1;
+            // registros[pos].prev = -1;
+            // registros[pos].next = -1;            
             // se actualiza el inicio de la lista de eliminados
             header.nextDel = registros[pos-1].next;
             header.toDel = registros[pos-1].toNext;
@@ -821,6 +1087,7 @@ int main()
     registros.push_back(regC);
     registros.push_back(regD);
     seq.insertAll(registros);
+    // seq.printHeader();
     // TESTS DE INSERTS CUANDO NO HAY DELETE
     // Tests cuando no existe y hace insert al inicio.
     seq.add(regB);
@@ -837,15 +1104,31 @@ int main()
     seq.add(regE);
     // Tests cuando no existe y hacer insert al final.
     seq.add(regG);
+    // Tests de search
+    cout << "TEST SEARCH EXACTO\n";
+    seq.search("F");
+    cout << "TEST SEARCH RANGO\n";
+    seq.search("E", "G");
     // Tests de delete al inicio
     seq.delete_("A");
-    seq.delete_("B");
     // Tests de delete al final
     seq.delete_("G");
     // Tests de delete al medio
     seq.delete_("E");
-    seq.loadAll();
-    // seq.printHeader();
+    cout << "TEST SEARCH RANGO DEPUÉS DE DELETES\n";
+    seq.search("E", "G");        
+    // seq.printAllDeleted();
+    // Tests de add en un registro eliminado
+    // add en un registro eliminado al inicio
+    // seq.add(regB); 
+    // add en un registro eliminado al medio
+    // int xd;
+    // cin >> xd;
+    // seq.add(regE);
+    // seq.load("auxAdd.txt");
+    // add en un registro eliminado al final
+    // seq.add(regG);
+    // seq.loadAll();
 
     return 0;
 };
