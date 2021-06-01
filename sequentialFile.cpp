@@ -202,6 +202,10 @@ class Sequential
 
         void actualizeElimPointers(pair<int, char> goToprevElim, Registro prevElim, Registro elim)
         {
+            // cout << goToprevElim.first << goToprevElim.second << endl;
+            // printRegistro(prevElim);
+            // printRegistro(elim);
+            // cout << endl;
             // se ha actualizado el head de la lista de eliminados
             if (goToprevElim.first == -1)
             {
@@ -253,10 +257,27 @@ class Sequential
                     fileHeader.open(nombre, ios::in | ios::out | ios::binary);
                     fileHeader.seekg(0, ios::beg);
                     fileHeader.read((char*) &header, sizeof(Registro));
-                    header.next   = prevElim.next;
-                    header.toNext = prevElim.toNext;
+                    fileHeader.close();
+                    fstream fileStart;
+                    if (header.toNext == 'm')
+                    {
+                        fileStart.open(nombre, ios::in | ios::out | ios::binary);
+                        fileStart.seekg((header.next+1)*sizeof(Registro), ios::beg);
+                    }
+                    else
+                    {
+                        fileStart.open(nombreAux, ios::in | ios::out | ios::binary);
+                        fileStart.seekg((header.next)*sizeof(Registro), ios::beg);
+                    }
+                    Registro start;
+                    fileStart.read((char*) &start, sizeof(Registro));
+                    fileStart.close();
+                    header.next   = start.prev;
+                    header.toNext = start.toPrev;
+                    fileHeader.open(nombre, ios::in | ios::out | ios::binary);
                     fileHeader.seekg(0, ios::beg);
                     fileHeader.write((char*) &header, sizeof(Registro));
+                    // printInfoHeader(header);
                     fileHeader.close();                
                 }
             }
@@ -368,6 +389,7 @@ class Sequential
             file.open(nombre, ios::in | ios::out | ios::binary);
             file.seekg(0, ios::beg);
             file.read((char*) &header, sizeof(Registro));
+            printInfoHeader(header);
             Registro current;
             if (header.nextDel != -1)
             {
@@ -652,6 +674,8 @@ class Sequential
             {
                 while (true)
                 {
+                    // debug utility
+                    // printRegistro(elim, true);
                     // está al inicio
                     if (elim.prev == -1)
                     {
@@ -771,7 +795,6 @@ class Sequential
                     }
                     // final de la lista de eliminados
                     if (elim.nextDel == -1) break;
-                    prevElim = elim;
                     if (goToPrevElim.first == -1)
                     {
                         goToPrevElim = make_pair(head.nextDel, head.toDel);
@@ -780,6 +803,7 @@ class Sequential
                     {
                         goToPrevElim = make_pair(prevElim.nextDel, prevElim.toDel);
                     }
+                    prevElim = elim;
 
                     if (elim.toDel == 'm')
                     {
@@ -787,7 +811,7 @@ class Sequential
                     }
                     else
                     {
-                        elim = readRecord(nombre, elim.nextDel, false);
+                        elim = readRecord(nombreAux, elim.nextDel, false);
                     }
                 } 
             }
@@ -1209,19 +1233,20 @@ int main()
     seq.loadAll();
     cout << "TEST SEARCH RANGO DEPUÉS DE DELETES\n";
     seq.search("E", "G");        
-    
-    // seq.printAllDeleted();
+    cout << "TEST LINKED LIST DE ELIMINADOS\n";
+    seq.printAllDeleted();
+    cout << "TEST ADDS EN REGISTROS ELIMINADOS\n";
     // Tests de add en un registro eliminado
     // add en un registro eliminado al inicio
-    // seq.add(regB); 
+    seq.add(regA); 
     // add en un registro eliminado al medio
     // int xd;
     // cin >> xd;
-    // seq.add(regE);
+    // seq.add(regE); // entra en bucle
     // seq.load("auxAdd.txt");
     // add en un registro eliminado al final
     // seq.add(regG);
-    // seq.loadAll();
+    seq.loadAll();
 
     return 0;
 };
