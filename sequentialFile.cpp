@@ -1259,13 +1259,10 @@ int main()
     // Tests de add en un registro eliminado
     // add en un registro eliminado al inicio
     seq.add(regA); 
-    // add en un registro eliminado al medio
-    // int xd;
-    // cin >> xd;
-    // seq.add(regE); // entra en bucle
-    // seq.load("auxAdd.txt");
     // add en un registro eliminado al final
     seq.add(regG);
+    // add en un registro eliminado al medio
+    seq.add(regE);
     seq.loadAll();
 
     return 0;
