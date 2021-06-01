@@ -630,16 +630,15 @@ class Sequential
                 // se actualiza el inicio de la lista de NO eliminados
                 header.next   = registros[pos].next;
                 header.toNext = registros[pos].toNext;
+                // se actualiza el inicio de la lista de eliminados
+                header.nextDel = registros[pos+1].prev;
+                header.toDel = registros[pos+1].toPrev;
                 int temp = registros[pos+1].prev;
                 registros[pos+1].prev = -1;
                 // el nextDel del registro eliminado es igual a la cabecera de la lista de eliminados
                 registros[pos].nextDel = header.nextDel;
                 registros[pos].toDel = header.toDel;
-                // se actualiza el inicio de la lista de eliminados
-                header.nextDel = registros[pos+1].prev;
-                header.toDel = registros[pos+1].toPrev;
                 // sobreescribir header
-                fstream fileHeader;
                 fileHeader.open(nombre, ios::in | ios::out | ios::binary);
                 fileHeader.seekg(0, ios::beg);
                 fileHeader.write((char*) &header, sizeof(Registro));
@@ -649,13 +648,13 @@ class Sequential
                 if (registros[pos+1].toPrev == 'm')
                 {
                     fileDeleted.open(nombre, ios::in | ios::out | ios::binary);
-                    fileDeleted.seekg((registros[pos+1].prev + 1) * sizeof(Registro), ios::beg);
+                    fileDeleted.seekg((temp + 1) * sizeof(Registro), ios::beg);
                     fileDeleted.write((char*) &registros[pos], sizeof(Registro));
                 }
                 else
                 {
                     fileDeleted.open(nombreAux, ios::in | ios::out | ios::binary);
-                    fileDeleted.seekg((registros[pos+1].prev) * sizeof(Registro), ios::beg);
+                    fileDeleted.seekg((temp) * sizeof(Registro), ios::beg);
                     fileDeleted.write((char*) &registros[pos], sizeof(Registro));
                 }
                 fileDeleted.close();
@@ -665,13 +664,13 @@ class Sequential
                 {
                     fileNextDeleted.open(nombre, ios::in | ios::out | ios::binary);
                     fileNextDeleted.seekg((registros[pos].next + 1) * sizeof(Registro), ios::beg);
-                    fileNextDeleted.write((char*) &registros[pos], sizeof(Registro));
+                    fileNextDeleted.write((char*) &registros[pos+1], sizeof(Registro));
                 }
                 else
                 {
                     fileNextDeleted.open(nombreAux, ios::in | ios::out | ios::binary);
                     fileNextDeleted.seekg((registros[pos].next) * sizeof(Registro), ios::beg);
-                    fileNextDeleted.write((char*) &registros[pos], sizeof(Registro));
+                    fileNextDeleted.write((char*) &registros[pos+1], sizeof(Registro));
                 }
                 fileNextDeleted.close();
                 return true;
