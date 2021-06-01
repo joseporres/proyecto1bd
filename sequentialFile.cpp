@@ -176,11 +176,6 @@ class Sequential
             // En el nuevo
             registro.prev   = prevPrev.next;
             registro.toPrev = prevPrev.toNext;
-
-            // printRegistro(prevPrev);
-            // printRegistro(prev);
-            // printRegistro(registro);
-            // cout << "-----------------------------\n";
             fileAux.write((char*) &registro, sizeof(Registro));                                    
             fileAux.close();
 
@@ -542,41 +537,6 @@ class Sequential
                 registrosEncontrados.push_back(registros[i]);
             }            
 
-            // vector<Registro> registros = load(nombre, false);
-            // vector<Registro> registrosAux = load(nombreAux, false);
-
-
-            // if (pos != -1)
-            // {
-            //     // el actual
-            //     printRegistro(registros[pos]);
-            //     registrosEncontrados.push_back(registros[pos]);
-            //     // ir hacia adelante
-            //     for (int i = pos+1; i < registros.size(); ++i)
-            //     {
-            //         if (strcmp(registros[i].nombre, charKey) != 0) break;
-            //         printRegistro(registros[i]);
-            //         registrosEncontrados.push_back(registros[i]);
-            //     }
-            //     // ir hacia atrás
-            //     for (int i = pos-1; i >= 0; --i)
-            //     {
-            //         if (strcmp(registros[i].nombre, charKey) != 0) break;
-            //         printRegistro(registros[i]);
-            //         registrosEncontrados.push_back(registros[i]);
-            //     }
-            // }
-
-            // // linear en el archivo auxiliar
-            // for (int i = 0; i < registrosAux.size(); ++i)
-            // {
-            //     // si lo encuentra
-            //     if (strcmp(registrosAux[i].nombre, charKey) == 0)
-            //     {
-            //         printRegistro(registrosAux[i]);
-            //         registrosEncontrados.push_back(registrosAux[i]);
-            //     }
-            // }
             return registrosEncontrados;
         };
 
@@ -608,43 +568,6 @@ class Sequential
                 printRegistro(registros[i]);
                 registrosEncontrados.push_back(registros[i]);
             }   
-
-            // vector<Registro> registros = load(nombre, false);
-            // vector<Registro> registrosAux = load(nombreAux, false);
-
-            // int pos = binarySearch(registros, begin);
-            // if (pos != -1)
-            // {
-            //     // el actual
-            //     printRegistro(registros[pos]);
-            //     registrosEncontrados.push_back(registros[pos]);
-            //     // ir hacia adelante
-            //     for (int i = pos+1; i < registros.size(); ++i)
-            //     {
-            //         if (strcmp(registros[i].nombre, charEnd) > 0) break;
-            //         printRegistro(registros[i]);
-            //         registrosEncontrados.push_back(registros[i]);
-            //     }
-            //     // ir hacia atrás
-            //     for (int i = pos-1; i >= 0; --i)
-            //     {
-            //         if (strcmp(registros[i].nombre, charBeg) != 0) break;
-            //         printRegistro(registros[i]);
-            //         registrosEncontrados.push_back(registros[i]);
-            //     }
-            // }
-
-            // // linear en el archivo auxiliar
-            // for (int i = 0; i < registrosAux.size(); ++i)
-            // {
-            //     // si está en el rango
-            //     if ((strcmp(registrosAux[i].nombre, charBeg) >= 0)  
-            //         && (strcmp(registrosAux[i].nombre, charEnd) <= 0))
-            //     {
-            //         printRegistro(registrosAux[i]);
-            //         registrosEncontrados.push_back(registrosAux[i]);
-            //     }
-            // }
             return registrosEncontrados;
         };
 
@@ -1168,9 +1091,6 @@ class Sequential
             }
             fileNextDeleted.close();
             // está bien
-            // printRegistro(registros[pos-1]);
-            // printRegistro(registros[pos]);
-            // printRegistro(registros[pos+1]);
             return true;
         };
 
@@ -1210,8 +1130,13 @@ int main()
     strcpy(regG.nombre, "G");
     strcpy(regG.carrera, "cienciadelacomp");       
 
-    registros.push_back(regC);
-    registros.push_back(regD);
+    // for (int i = 0; i < 50; ++i)
+    {
+        registros.push_back(regC);
+        registros.push_back(regD);
+    }
+    // cout << registros.size() << endl;
+
     seq.insertAll(registros);
     // seq.printHeader();
     // TESTS DE INSERTS CUANDO NO HAY DELETE
@@ -1228,7 +1153,7 @@ int main()
     seq.search("F");    
     seq.add(regF);
     // Reconstrucción
-    seq.loadAll();
+    // seq.loadAll();
     cout << "POST RECONSTRUCCIÓN\n";
     // Tests cuando no existe y hacer insert al medio
     seq.add(regE);
@@ -1239,7 +1164,7 @@ int main()
     cout << "TEST SEARCH RANGO\n";
     seq.search("E", "G");
     cout << "PRE DELETES\n";
-    seq.loadAll();
+    // seq.loadAll();
     cout << "POST DELETES\n";
     // Tests de delete al inicio
     seq.delete_("A");
@@ -1248,13 +1173,11 @@ int main()
     // // Tests de delete al medio
     // seq.printHeader();
     seq.delete_("E");
-    // seq.load("seqFile.txt");
-    // seq.load("auxAdd.txt");
-    seq.loadAll();
+    // seq.loadAll();
     cout << "TEST SEARCH RANGO DEPUÉS DE DELETES\n";
     seq.search("E", "G");        
     cout << "TEST LINKED LIST DE ELIMINADOS\n";
-    seq.printAllDeleted();
+    // seq.printAllDeleted();
     cout << "TEST ADDS EN REGISTROS ELIMINADOS\n";
     // Tests de add en un registro eliminado
     // add en un registro eliminado al inicio
@@ -1263,7 +1186,7 @@ int main()
     seq.add(regG);
     // add en un registro eliminado al medio
     seq.add(regE);
-    seq.loadAll();
+    // seq.loadAll();
 
     return 0;
 };
