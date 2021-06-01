@@ -463,7 +463,8 @@ class Sequential
             // printRegistro(reg);
             registros.push_back(reg);
 
-            while (reg.next != -1)
+            // while (reg.next != -1)
+            while (reg.next >= 0)
             {
                 if (reg.toNext == 'm')
                 {
@@ -740,11 +741,29 @@ class Sequential
                                 fileToWrite.open(nombreAux, ios::in | ios::out | ios::binary);
                                 fileToWrite.seekg((prev.next)*sizeof(Registro), ios::beg);
                             }
+                            // cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n";
+                            // cout << goToPrevElim.first << goToPrevElim.second << endl;
+                            // printRegistro(prevElim);
+                            // printRegistro(elim);
                             registro.prev   = elim.prev;
                             registro.toPrev = elim.toPrev;
                             fileToWrite.write((char*) &registro, sizeof(Registro));
                             fileToWrite.close();
                             actualizeElimPointers(goToPrevElim, prevElim, elim);
+                            prev.next *= -1;
+                            fstream fileToReActive;
+                            if (registro.toPrev == 'm')
+                            {
+                                fileToReActive.open(nombre, ios::in | ios::out | ios::binary);
+                                fileToReActive.seekg((registro.prev+1)*sizeof(Registro), ios::beg);
+                            }
+                            else
+                            {
+                                fileToReActive.open(nombre, ios::in | ios::out | ios::binary);
+                                fileToReActive.seekg((registro.prev)*sizeof(Registro), ios::beg);
+                            }
+                            fileToReActive.write((char*) &prev, sizeof(Registro));
+                            fileToReActive.close();
                             return;
                         }
                     }
@@ -1052,7 +1071,8 @@ class Sequential
                     fileDeleted.write((char*) &registros[pos], sizeof(Registro));
                 }
                 fileDeleted.close();
-                registros[pos-1].next = -1;
+                // para guardar el next anterior solo que en negativo para que ahí termine de iterar sobre la lista de NO eliminados.
+                registros[pos-1].next *= -1;
                 // sobreescribir el registro previo al eliminado
                 fstream filePrevDeleted;
                 if (registros[pos].toPrev == 'm')
@@ -1245,7 +1265,7 @@ int main()
     // seq.add(regE); // entra en bucle
     // seq.load("auxAdd.txt");
     // add en un registro eliminado al final
-    // seq.add(regG);
+    seq.add(regG);
     seq.loadAll();
 
     return 0;
