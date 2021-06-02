@@ -102,11 +102,11 @@ Mejor caso, caso promedio y peor caso: O(1)
 
 Directamente en el aux:
 
-Mejor caso (al inicio):  O(n) + O(lgn) + O(1)
+Mejor caso (al inicio sin reconstrucción):  O(n) + O(lgn) + O(1)
 
-Caso promedio (al medio): O(n) + O(lgn) + O(n)
+Caso promedio (al medio o al final sin reconstrucción): O(n) + O(lgn) + O(n)
 
-Peor caso (al final): O(n) + O(lgn) + O(n)
+Peor caso (al medio o al final con reconstrucción): O(n) + O(lgn) + O(n) + O(n)
 #### Delete
 Mejor caso, caso promedio y peor caso: O(n)
 
