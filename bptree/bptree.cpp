@@ -12,11 +12,13 @@ template<int order>
 struct Node
 {
 	char keys[order+1][20]; 
+    long posLib{0};
+    long next {-1};
 	long children[order+2] = {0};
+    long nodePos{-1};
+    
 	bool isLeaf = false;
-    int nodePos = -1;
-    int posLib = 0;
-    int next = -1;
+    
     
     void insertNode(int pos, char value[20], long childs)
     {
@@ -53,6 +55,7 @@ class bptree
     private:
         string indexFile;
         string dataFile;
+        float aux;
 
         bool isEmpty(string name)
         {
@@ -64,33 +67,26 @@ class bptree
 
         long writeDataFile(Registro reg)
         {
-            fstream file;
-            file.open(dataFile, ios::in | ios::out | ios::binary);
-            file.seekg(0, ios::beg);
-            file.write((char*) &reg, sizeof(Registro));
-            long final = file.tellg() - sizeof(Registro);
-            file.close();
-            return final;
+            fstream outFile;
+            outFile.open(dataFile,ios::in| ios::out| ios::binary | std::ofstream::app);
+            long _pos;
+            outFile.seekg(0,ios::end);
+            outFile.write((char* )&reg, sizeof(Registro));
+            _pos=outFile.tellg()- sizeof(Registro);
+            outFile.close();
+            return _pos;
         };
 
         void writeIndexFile(Node<order> node, int pos)
         {
-            fstream file;
-            file.open(indexFile, ios::in | ios::out | ios::binary);
-            file.seekg(pos, ios::beg);
-            file.write((char*) &node, sizeof(Node<order>));
-            file.close();
+            fstream outFile;
+            outFile.open(indexFile,ios::in| ios::out| ios::binary);
+            outFile.seekg(pos, ios::beg);         
+            outFile.write((char* )&node, sizeof(Node<order>));
+            outFile.close();
         };
 
-         Node<order> getRoot()
-         {
-            Node<order> root;
-            fstream file;
-            file.open(indexFile, ios::in | ios::out |ios::binary);
-            file.read((char*) &root, sizeof(Node<order>));
-            file.close();
-            return root;
-         };
+
 
          Node<order> getNextNode(long pos)
          {
@@ -103,78 +99,194 @@ class bptree
             return next;
          };
 
-        bool addUtil(Node<order> node, Registro reg, long dataPos)
+        bool addUtil(Node<order>& node, Registro reg, long dataPos)
         {
             // buscamos la posicion en el nodo
-            int posNodo; 
-            while (posNodo < node.posLib && strcmp(node.keys[posNodo], reg.nombre) < 0) ++posNodo;
-            if (node.isLeaf)
+            int pos = 0;
+            while (pos < node.posLib && node.keys[pos] < reg.nombre) pos++;
+            if (!node.isLeaf) 
             {
-                node.insertNode(posNodo, reg.nombre, dataPos);
+                long address = node.children[pos];
+                Node<order> child = getNextNode(address);
+                if (addUtil(child, reg,dataPos)) 
+                {
+                    split(node, pos);
+                }
+            } 
+            else 
+            {
+                node.insertNode(pos, reg.codigo,dataPos);
                 writeIndexFile(node, node.nodePos);
             }
-            else
-            {
-                long next = node.children[posNodo];
-                Node<order> nextNode = getNextNode(next);
-                if (addUtil(nextNode, reg, dataPos)) 
-                {
-                    // Acá nos faltó la lógica de realizar un split
-                    // split(node, posNodo);
-                }
-            }
-            bool overflow = node.overflow();
-            if (!overflow) return false;
-            return true;
+            
+            return node.overflow();
         };
         
-        Registro searchUtil(Node<order>node, char nombre [20])
+        bool searchUtil(Node<order>node, char nombre[20], Registro& buscado)
         {
             if (!node.isLeaf)
             {
-                int i = 0, pos = 0;
-                while (i < node.posLib && strcmp(nombre, node.keys[i]) >= 0) ++i;
-                node = getNextNode(node.children[pos]);
-                return searchUtil(node,nombre);
+                int pos = 0;
+                for (int i = 0; i < node.posLib; i++)
+                {
+                    if (strcmp(nombre, node.keys[i]) < 0) break;
+                    ++pos;
+                }
+                long nodePos = node.children[pos];
+                node = getNextNode(nodePos);
+                return searchUtil(node, nombre, buscado);
             }
             else
             {
                 
-                int pos = -1;
-                for(int i = 0; i < node.posLib; i++)
+                int pos = -1;//para llegar al children cero 
+                for (int i = 0; i < node.posLib; ++i)
                 {
-                    if (nombre == node.keys[i])
+                    if (strcmp(nombre, node.keys[i]) == 0)
                     {
                         pos = i;
                         break;
                     }
                 }
                 long dataPos = node.children[pos+1];
+    
                 if (pos == -1)
-                { 
-                    Registro reg;
-                    fstream file;
-                    file.open(dataFile,ios::in | ios::out | ios::binary);
-                    file.seekg(node.children[0], ios::beg);
-                    file.read((char*) &reg, sizeof(Registro));
-                    file.close();
-                    if (reg.nombre == nombre)
-                    {
-                        return reg;
-                    }
-                }
-                else
                 {
                     Registro reg;
                     fstream file;
-                    file.open(dataFile,ios::in|ios::out|ios::binary);
-                    file.seekg(node.children[dataPos],ios::beg);
-                    file.read((char*)&reg, sizeof(Registro));
-                    file.close();
-                    return reg; 
+                    file.open(dataFile,ios::in | ios::out | ios::binary);
+                    file.seekg(dataPos, ios::beg);
+                    file.read((char*) &reg, sizeof(Registro));
+                    file.close(); 
+
+                    if (strcmp(reg.nombre, nombre) != 0) return false;
+
+                    buscado = reg;
+                    return true;
                 }
 
+                Registro reg;
+                fstream file;
+                file.open(dataFile,ios::in | ios::out | ios::binary);
+                file.seekg(dataPos, ios::beg);
+                file.read((char*) &reg, sizeof(Registro));
+                file.close();
+
+                buscado = reg;
+                return true; 
+        
             }
+        }
+
+        void split(Node<order>node, int posNode)
+        {
+            Node<order> nodeSplit = getNextNode(node.children[posNode]); 
+            Node<order> left = nodeSplit;
+            left.posLib = 0;
+            Node<order> right;
+            fstream file;
+            long posNew;
+            file.open(indexFile, ios::in |ios::out| ios::binary);
+            file.seekg(0, ios::end);
+            posNew = file.tellg();
+            file.close();
+            right.nodePos = posNew;
+        
+            int i = 0, j = 0;
+
+            for (i = 0; j < aux; ++i, ++j) 
+            {
+                left.children[i] = nodeSplit.children[j];
+                strcpy(left.keys[i], nodeSplit.keys[j]);
+                left.posLib++;
+            }
+
+            left.children[i] = nodeSplit.children[j];
+            node.insertNode(posNode,nodeSplit.keys[j],left.nodePos);
+
+            if (nodeSplit.children[0] != 0) ++j;
+            else 
+            {
+                right.next = left.next;
+                left.next = right.nodePos;
+                node.children[posNode + 1] = right.nodePos;
+            }
+
+            for (i = 0; j < order + 1; ++i, ++j) 
+            {
+                right.children[i] = nodeSplit.children[j];
+                strcpy(right.keys[i], nodeSplit.keys[j]);
+                right.posLib++;
+            }
+
+            right.children[i] = nodeSplit.children[j];
+
+            node.children[posNode] = left.nodePos;
+            node.children[posNode + 1] = right.nodePos;
+
+
+            left.isLeaf = nodeSplit.isLeaf;
+            right.isLeaf = nodeSplit.isLeaf;
+
+            writeIndexFile(left, left.nodePos);
+            writeIndexFile(right, right.nodePos);
+            writeIndexFile(node, node.nodePos);
+            
+        };
+
+        void splitRoot(Node<order> &root)
+        {
+            Node<order> left;
+            Node<order> right;
+        
+            int pos = 0, j = 0, i = 0;
+            for (i = 0; j < aux; ++i, ++j) 
+            {
+                left.children[i] = root.children[j];
+                strcpy(left.keys[i],root.keys[j]);
+                left.posLib++;
+            }  
+
+            left.children[i] = root.children[j];
+            strcpy(root.keys[0], root.keys[j]);
+            
+            long posNew;
+            fstream file;
+            file.open(indexFile, ios::in |ios::out| ios::binary);
+            file.seekg(0, ios::end);
+            posNew = file.tellg();
+            file.close();
+
+            left.nodePos = posNew;
+            
+            right.nodePos = left.nodePos + sizeof(Node<order>);
+            left.next = right.nodePos;
+            if (root.isLeaf) left.isLeaf = true;
+            else left.isLeaf = false;
+            right.isLeaf = left.isLeaf;
+
+            if (root.children[0] != 0) j++;
+
+            for (i = 0; j < order + 1; ++i, ++j) {
+                right.children[i] = root.children[j];
+                strcpy(right.keys[i], root.keys[j]);
+                right.posLib++;
+            }
+
+            right.children[i] = root.children[j];
+
+            root.children[0] = left.nodePos;
+
+            root.children[1] = right.nodePos;
+
+            root.posLib = 1;
+            root.isLeaf=false;
+
+            writeIndexFile(right, right.nodePos);
+
+            writeIndexFile(root, root.nodePos);
+
+            writeIndexFile(left, left.nodePos);
         }
 
 
@@ -183,8 +295,8 @@ class bptree
         {
             this->indexFile = indexFile;
             this->dataFile = dataFile;
+            aux = ceil(order/2.0);
         };
-
          
         void add(Registro reg)
         {
@@ -193,30 +305,32 @@ class bptree
             {
                 //En cualquier otro caso insertamos de forma recursiva
                 long dataPos = writeDataFile(reg); //lo insertamos y guardamos la posicion en el datafile
-                Node<order> root = getRoot();
-                if (addUtil(root, reg, dataPos)) 
+                Node<order> root = getNextNode(0);
+                if (addUtil(root, reg, dataPos))
                 {
-                    // Acá nos faltó la lógica de realizar un split
-                    // splitRoot(root);
+                    splitRoot(root);
                 }
-                return;
             }
-            // CC: Si el index esta vacio insertamos el root
-            Node<order> root;
-            long dataPos = writeDataFile(reg);
-            root.insertNode(0, reg.nombre, dataPos);
-            root.isLeaf = true;
-            root.nodePos = 0;
-            writeIndexFile(root, 0);
+            else
+            {
+                // CC: Si el index esta vacio insertamos el root
+                Node<order> root;
+                long dataPos = writeDataFile(reg);
+                root.insertNode(0, reg.nombre, dataPos);
+                root.isLeaf = true;
+                root.nodePos = 0;
+                writeIndexFile(root, root.nodePos);
+
+            }
         };
 
       
-        Registro search(string nombre)
+        Registro search(string nombre, Registro &reg)
         {   
-            Node<order> root = getRoot();
-            char nombreUtil [20];
+            Node<order> root = getNextNode(0);
+            char nombreUtil[20];
             strcpy(nombreUtil, nombre.c_str());
-            Registro reg = searchUtil(root,nombreUtil);
+            searchUtil(root,nombreUtil,reg);
             return reg;
         };
 
@@ -247,12 +361,22 @@ int main ()
     bptree<3> b("indexFile.txt", "dataFile.txt");
 
     b.add(reg);
-   
+    b.add(reg2);
+    b.add(reg3);
+
 
     Registro regRE;
+    Registro regRf;
+    Registro regRg;
 
-    regRE = b.search("A");
+    b.search("A",regRE);
+    cout<<regRE.nombre<<endl;
+    b.search("B",regRf);
+    cout<<regRf.nombre<<endl;
+    b.search("C",regRg);
+    cout<<regRg.nombre<<endl;
+    
 
-    cout<<reg.nombre;
+    
     return 0;
 }
