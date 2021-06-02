@@ -131,9 +131,16 @@ Peor caso: O(n) + O(n) = O(n)
 
 ## Resultados experimentales
 Cuando en un add se hace una reconstrucción demora un tiempo considerablemente mayor.
+
 https://raw.githubusercontent.com/joseporres/proyecto1bd/main/test100seqFile.PNG
 https://raw.githubusercontent.com/joseporres/proyecto1bd/main/test500seqFile.PNG
 https://raw.githubusercontent.com/joseporres/proyecto1bd/main/test1000seqFile.PNG
+
+Dentro del add se emplean distintos llamados a memoria secundaria como el readRecord, loadAll y también para sobreescribir los registros que se vean afectados o la cabecera.
+
+Dentro del search solo en el loadAll se accede a memoria secundaria, ya que este internamente llama a readRecord.
+
+Dentro del delete se utiliza loadAll, se sobreescribe la cabecera para cambiar el inicio de la lista de eliminados y los registros que se vean afectados. En caso se borre al inicio, también se debe modificar en la cabecera el inicio de la lista de no eliminados.
 
 ## Videos explicando las implementaciones y realizando pruebas
 https://drive.google.com/drive/folders/1Yn4vvgjjJV4u7JxAgyJ1lUMB5iYo9ztx?usp=sharing
