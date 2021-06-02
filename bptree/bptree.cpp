@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstring>
 #include <cmath>
+#include<vector>
 
 using namespace std;
 
@@ -178,6 +179,93 @@ class bptree
             }
         }
 
+        bool searchUtilRango(Node<order>node, char begin[20], char end[20], vector<Registro>& buscado)
+        {
+            if (!node.isLeaf)
+            {
+                int pos = 0;
+                for (int i = 0; i < node.posLib; i++)
+                {
+                    if (strcmp(begin, node.keys[i]) < 0) break;
+                    ++pos;
+                }
+                long nodePos = node.children[pos];
+                node = getNextNode(nodePos);
+                return searchUtilRango(node, begin, end, buscado);
+            }
+            else
+            {
+                
+                int pos = -1;//para llegar al children cero 
+                for (int i = 0; i < node.posLib; ++i)
+                {
+                    if (strcmp(begin, node.keys[i]) == 0)
+                    {
+                        pos = i;
+                        break;
+                    }
+                }
+                long dataPos = node.children[pos+1];
+
+                if (pos == -1)
+                {
+                    Registro reg;
+                    fstream file;
+                    file.open(dataFile,ios::in | ios::out | ios::binary);
+                    file.seekg(dataPos, ios::beg);
+                    file.read((char*) &reg, sizeof(Registro));
+                    file.close(); 
+
+                    if (strcmp(reg.nombre, begin) != 0) return false;
+
+                    buscado.push_back(reg);
+                    // vas iterando por sobre las hojas
+                    while (node.next != -1)
+                    {
+                        ++pos;
+                        dataPos = node.children[pos+1];
+                        Registro reg;
+                        fstream file;
+                        file.open(dataFile,ios::in | ios::out | ios::binary);
+                        file.seekg(dataPos, ios::beg);
+                        file.read((char*) &reg, sizeof(Registro));
+                        file.close(); 
+                        // cuando el nombre ya supera al end retorna true
+                        if (strcmp(reg.nombre, end) > 0) return true;  
+                        buscado.push_back(reg);                      
+                    }
+
+                    return true;
+                }
+
+                Registro reg;
+                fstream file;
+                file.open(dataFile,ios::in | ios::out | ios::binary);
+                file.seekg(dataPos, ios::beg);
+                file.read((char*) &reg, sizeof(Registro));
+                file.close();
+
+                buscado.push_back(reg);
+                // vas iterando por sobre las hojas
+                while (node.next != -1)
+                {
+                    ++pos;
+                    dataPos = node.children[pos+1];
+                    Registro reg;
+                    fstream file;
+                    file.open(dataFile,ios::in | ios::out | ios::binary);
+                    file.seekg(dataPos, ios::beg);
+                    file.read((char*) &reg, sizeof(Registro));
+                    file.close(); 
+                    // cuando el nombre ya supera al end retorna true
+                    if (strcmp(reg.nombre, end) > 0) return true;  
+                    buscado.push_back(reg);                      
+                }
+                return true; 
+
+            }
+        }
+
         void split(Node<order>node, int posNode)
         {
             Node<order> nodeSplit = getNextNode(node.children[posNode]); 
@@ -325,14 +413,23 @@ class bptree
         };
 
       
-        Registro search(string nombre, Registro &reg)
+        bool search(string nombre, Registro &reg)
         {   
             Node<order> root = getNextNode(0);
             char nombreUtil[20];
             strcpy(nombreUtil, nombre.c_str());
-            searchUtil(root,nombreUtil,reg);
-            return reg;
+            return searchUtil(root, nombreUtil, reg);
         };
+
+        void search(string begin, string end, vector<Registro> &reg)
+        {
+            Node<order> root = getNextNode(0);
+            char beginUtil[20];
+            strcpy(beginUtil, begin.c_str());
+            char endUtil[20];
+            strcpy(endUtil, end.c_str());            
+            return searchUtilRango(root, beginUtil, endUtil, reg);
+        }
 
 
 };
