@@ -110,5 +110,8 @@ Peor caso (al final): O(n) + O(lgn) + O(n)
 #### Delete
 Mejor caso, caso promedio y peor caso: O(n)
 
+## Videos explicando las implementaciones y realizando pruebas
+https://drive.google.com/drive/folders/1Yn4vvgjjJV4u7JxAgyJ1lUMB5iYo9ztx?usp=sharing
+
 ## Conclusiones
 Finalmente, el código realizado es funcional, sin embargo podría mejorarse con respecto a complejidades sobre todo en el sequentialFile, ya que se depende mucho del loadAll y podría obviarse para cuando se hace add al inicio por ejemplo o en otros casos.
