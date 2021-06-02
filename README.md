@@ -90,11 +90,11 @@ La función addUtil comienza por recorrer el nodo en el que se encuentra para en
 ## Complejidades
 ### Sequential File
 #### Search exacto y por rangos
-Mejor caso: O(n) + O(lgn) + O(k) 
+Mejor caso: O(n) + O(lgn) + O(k) = O(n)
 
-Caso promedio: O(n) + O(lgn) + O(k) 
+Caso promedio: O(n) + O(lgn) + O(k) = O(n)
 
-Peor caso: O(n) + O(n)
+Peor caso: O(n) + O(n) = O(n)
 #### Add
 En un registro eliminado:
 
@@ -102,13 +102,14 @@ Mejor caso, caso promedio y peor caso: O(1)
 
 Directamente en el aux:
 
-Mejor caso (al inicio sin reconstrucción):  O(n) + O(lgn) + O(1)
+Mejor caso (al inicio sin reconstrucción):  O(n) + O(lgn) + O(1) = O(n)
 
-Caso promedio (al medio o al final sin reconstrucción): O(n) + O(lgn) + O(n)
+Caso promedio (al medio o al final sin reconstrucción): O(n) + O(lgn) + O(n) = O(n)
 
-Peor caso (al medio o al final con reconstrucción): O(n) + O(lgn) + O(n) + O(n)
+Peor caso (al medio o al final con reconstrucción): O(n) + O(lgn) + O(n) + O(n) = O(n)
 #### Delete
-Mejor caso, caso promedio y peor caso: O(n)
+Mejor caso y caso promedio: O(n) + O(lgn) = O(n)
+Peor caso: O(n) + O(n) = O(n)
 
 ## Videos explicando las implementaciones y realizando pruebas
 https://drive.google.com/drive/folders/1Yn4vvgjjJV4u7JxAgyJ1lUMB5iYo9ztx?usp=sharing
