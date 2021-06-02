@@ -138,4 +138,6 @@ https://raw.githubusercontent.com/joseporres/proyecto1bd/main/test1000seqFile.PN
 https://drive.google.com/drive/folders/1Yn4vvgjjJV4u7JxAgyJ1lUMB5iYo9ztx?usp=sharing
 
 ## Conclusiones
-Finalmente, el código realizado es funcional, sin embargo podría mejorarse con respecto a complejidades sobre todo en el sequentialFile, ya que se depende mucho del loadAll y podría obviarse para cuando se hace add al inicio por ejemplo o en otros casos.
+El código realizado es funcional, sin embargo podría mejorarse con respecto a complejidades sobre todo en el sequentialFile, ya que se depende mucho del loadAll y podría obviarse para cuando se hace add al inicio por ejemplo o en otros casos.
+Los b+ tree son ideales para búsquedas por rango.
+El sequential file suele tener inserts eficaces, ya que se insertan a modo de heap directamente en el aux o en algún espacio que esté eliminado. El de nosotros no es el ideal por el loadAll empleado. Sin embargo, al momento de realizar la reconstrucción del archivo se toma un tiempo considerable y habría que ir probando experimentalmente el factor de reconstrucción que más convenga.
