@@ -130,6 +130,7 @@ Mejor caso y caso promedio: O(n) + O(lgn) = O(n)
 Peor caso: O(n) + O(n) = O(n)
 
 ## Resultados experimentales
+Cuando en un add se hace una reconstrucción demora un tiempo considerablemente mayor.
 https://raw.githubusercontent.com/joseporres/proyecto1bd/main/test100seqFile.PNG
 https://raw.githubusercontent.com/joseporres/proyecto1bd/main/test500seqFile.PNG
 https://raw.githubusercontent.com/joseporres/proyecto1bd/main/test1000seqFile.PNG
