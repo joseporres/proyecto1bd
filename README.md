@@ -139,5 +139,7 @@ https://drive.google.com/drive/folders/1Yn4vvgjjJV4u7JxAgyJ1lUMB5iYo9ztx?usp=sha
 
 ## Conclusiones
 El código realizado es funcional, sin embargo podría mejorarse con respecto a complejidades sobre todo en el sequentialFile, ya que se depende mucho del loadAll y podría obviarse para cuando se hace add al inicio por ejemplo o en otros casos.
-Los b+ tree son ideales para búsquedas por rango.
+
+Los b+ tree son ideales para búsquedas por rango, porque hacen search exacto y luego van iterando por sobre las hojas.
+
 El sequential file suele tener inserts eficaces, ya que se insertan a modo de heap directamente en el aux o en algún espacio que esté eliminado. El de nosotros no es el ideal por el loadAll empleado. Sin embargo, al momento de realizar la reconstrucción del archivo se toma un tiempo considerable y habría que ir probando experimentalmente el factor de reconstrucción que más convenga.
