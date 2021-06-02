@@ -86,3 +86,19 @@ Se utilizaron 2 funciones: una de ellas es la que el usuario puede utilizar mien
 La función addUtil comienza por recorrer el nodo en el que se encuentra para encontrar la posición deseada. Luego verificamos si es hoja el nodo en el que nos encontramos. Si lo es lo insertamos y retornamos si hay overflow. Caso contrario, nos movemos a uno de los hijos y realizamos el mismo procedimiento hasta llegar a la posición correcta. Finalmente, si es que hay overflow aplicamos el split.
 
 ### Delete (somos un grupo de 2)
+
+## Complejidades
+### Sequential File
+#### Search exacto y por rangos
+Mejor caso: O(n) + O(lgn) + O(k) 
+Caso promedio: O(n) + O(lgn) + O(k) 
+Peor caso: O(n) + O(n)
+#### Add
+En un registro eliminado:
+Mejor caso, caso promedio y peor caso: O(1)
+Directamente en el aux:
+Mejor caso (al inicio): O(n) + O(lgn) + O(1)
+Caso promedio (al medio): O(n) + O(lgn) + O(n)
+Peor caso (al final): O(n) + O(lgn) + O(n)
+#### Delete
+Mejor caso, caso promedio y peor caso: O(n)
