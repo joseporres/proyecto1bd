@@ -97,12 +97,15 @@ Caso promedio: O(n) + O(lgn) + O(k)
 Peor caso: O(n) + O(n)
 #### Add
 En un registro eliminado:
+
 Mejor caso, caso promedio y peor caso: O(1)
 
 Directamente en el aux:
-Mejor caso (al inicio): O(n) + O(lgn) + O(1)
+
+Mejor caso (al inicio):  O(n) + O(lgn) + O(1)
 
 Caso promedio (al medio): O(n) + O(lgn) + O(n)
+
 Peor caso (al final): O(n) + O(lgn) + O(n)
 #### Delete
 Mejor caso, caso promedio y peor caso: O(n)
