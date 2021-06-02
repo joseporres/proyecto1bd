@@ -80,6 +80,9 @@ Esta implementación cuenta con 3 bloques: el nodo, el registro, y el árbol. Lo
 ### Search
 Se utilizaron 2 funciones: una de ellas es la que el usuario puede utilizar mientras que la otra es solo de utilidad. En la función visible por el usuario, toma el nombre del alumno y lo transforma a un char[20] para así poder hacer las comparaciones con el key deseado en el searchUtil. Luego de recibir ambos, el nombre en char[20] y el root verificamos si es que el nodo es hoja. Si lo es, simplemente buscamos la posición dentro del nodo y nos movemos al hijo obtenido con la posición. Caso contrario, iteramos en el nodo hoja hasta encontrar el key. Si se encuentra lo traemos del datafile.txt y lo retornamos. Si no, verificamos el caso en el que se encuentre en como primer hijo del nodo.
 
+### Search por rangos
+Se hace un search exacto del begin y luego se comienza a iterar por sobre los next de las hojas mientras cumpla que sea menor o igual al end y que no sobrepase los límites permitidos. 
+
 ### Add
 (Nos faltó implementar el split, pero entendimos y realizamos toda la lógica) Al igual que el search, en la inserción hay 2 funciones principales: el add y el addUtil. El usuario al llamar al add simplemente le entrega un registro. Primero verificamos si es que el archivo se encuentra vacío. Si es que lo está creamos un root, insertamos el registro en el dataFile.txt y obtenemos la posición insertada. Luego llenamos de información el root y lo insertamos en el indexFile.txt como una hoja. Caso contrario, si el archivo no está vacío, insertamos el registro y obtenemos la posición insertada. Después llamamos al root y llamamos a la función addUtil la cual retornará si es que hay overflow o no en el nodo modificado. Y si lo hay aplicamos splitRoot en el nodo.
 
