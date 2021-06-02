@@ -2,6 +2,20 @@
 ## Estructura Registro
 En la siguiente estructura se puede apreciar que hemos considerado una lista doblemente enlazada para los registros no eliminados, con la finalidad de poder retroceder. Esto es de vital importancia para algunas funciones, como por ejemplo el search por rangos. Por otra parte, en el caso de la lista de los eliminados es solo una linked list. Sin embargo, ¿cómo sabemos dónde comienza cada una de estas listas?, debido a que puede darse el caso donde la lista de los no eliminados no necesariamente comience por la primera línea del registro main (contraejemplo: se hace insertAll de B y C, luego se añade A y este sería el nuevo inicio de la lista, a pesar de estar en el archivo auxiliar). Por estos motivos, decidimos emplear una cabecera donde no solo se guarde el inicio de la lista de eliminados, sino también de la lista de no eliminados en los atributos nextDel, toDel, next y toNext respectivamente. En los atributos que son igual a m es porque se refiere al archivo principal; mientras que a, al auxiliar y hay que tomar en cuenta que en el main se cuenta un desfase de una línea por la cabecera. Finalmente, el atributo por sobre el cual se ordenarán los registros es nombre tal y como se trabajó en clase.
 
+    struct Registro
+    {
+        char codigo [5];
+        char nombre [20];
+        char carrera [15];
+        int ciclo = 0;
+        int next = -1;
+        char toNext = 'm';
+        int prev = -1;
+        char toPrev = 'm';
+        int nextDel = -1; 
+        char toDel = 'm';
+    };
+
 ## Sequential file
 ### Funciones de utilidad
 #### BinarySearch
