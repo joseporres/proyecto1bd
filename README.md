@@ -111,6 +111,10 @@ Peor caso (al medio o al final con reconstrucción): O(n) + O(lgn) + O(n) + O(n)
 Mejor caso y caso promedio: O(n) + O(lgn) = O(n)
 Peor caso: O(n) + O(n) = O(n)
 
+## Resultados experimentales
+https://raw.githubusercontent.com/joseporres/proyecto1bd/main/test500seqFile.PNG
+https://raw.githubusercontent.com/joseporres/proyecto1bd/main/test1000seqFile.PNG
+
 ## Videos explicando las implementaciones y realizando pruebas
 https://drive.google.com/drive/folders/1Yn4vvgjjJV4u7JxAgyJ1lUMB5iYo9ztx?usp=sharing
 
