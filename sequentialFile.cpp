@@ -413,7 +413,7 @@ class Sequential
             
         }
 
-        Registro readRecord(string nombre_, int pos, bool print = true)
+        Registro    readRecord(string nombre_, int pos, bool print = true)
         {
             fstream file;
             file.open(nombre_, ios::in | ios::out | ios::binary);
@@ -1183,7 +1183,7 @@ int main()
     seq.add(regG);
     // add en un registro eliminado al medio
     seq.add(regE);
-    // seq.loadAll();
+    seq.loadAll();
 
     return 0;
 };
